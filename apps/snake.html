@@ -87,7 +87,7 @@
       <button type="button" id="restart">Grow again</button>
     </div>
   </div>
-  <p class="hint">Arrow keys to slither · Space to pause</p>
+  <p class="hint">Arrow keys to slither · Space to pause · Click Begin to start</p>
 
   <script>
     const canvas = document.getElementById('game');
@@ -102,7 +102,7 @@
     const CELL = canvas.width / GRID;
     const HIGH_KEY = 'teatreeos-snake-high';
 
-    let snake, direction, nextDirection, berry, score, high, loop, paused, gameOver;
+    let snake, direction, nextDirection, berry, score, high, loop, paused, gameOver, gameStarted;
 
     high = parseInt(localStorage.getItem(HIGH_KEY) || '0', 10);
     highEl.textContent = high;
@@ -118,9 +118,24 @@
       score = 0;
       paused = false;
       gameOver = false;
+      gameStarted = false;
       scoreEl.textContent = '0';
-      overlay.classList.remove('visible');
       placeBerry();
+    }
+
+    function showStartScreen() {
+      clearInterval(loop);
+      gameStarted = false;
+      overlayMsg.textContent = 'Press an arrow key to begin';
+      restartBtn.textContent = 'Begin slither';
+      overlay.classList.add('visible');
+    }
+
+    function startGame() {
+      if (gameStarted || gameOver) return;
+      gameStarted = true;
+      overlay.classList.remove('visible');
+      startLoop();
     }
 
     function placeBerry() {
@@ -135,7 +150,7 @@
     }
 
     function tick() {
-      if (paused || gameOver) return;
+      if (!gameStarted || paused || gameOver) return;
 
       direction = { ...nextDirection };
       const head = {
@@ -190,7 +205,10 @@
 
     function endGame() {
       gameOver = true;
+      gameStarted = false;
+      clearInterval(loop);
       overlayMsg.textContent = `Game Over — Score: ${score}`;
+      restartBtn.textContent = 'Grow again';
       overlay.classList.add('visible');
     }
 
@@ -201,11 +219,6 @@
 
     document.addEventListener('keydown', (e) => {
       const key = e.key;
-      if (key === ' ') {
-        e.preventDefault();
-        if (!gameOver) paused = !paused;
-        return;
-      }
       const map = {
         ArrowUp: { x: 0, y: -1 },
         ArrowDown: { x: 0, y: 1 },
@@ -213,20 +226,41 @@
         ArrowRight: { x: 1, y: 0 },
       };
       const dir = map[key];
+
+      if (key === ' ') {
+        e.preventDefault();
+        if (!gameStarted && !gameOver) startGame();
+        else if (gameStarted && !gameOver) paused = !paused;
+        return;
+      }
+
       if (!dir) return;
       e.preventDefault();
+
+      if (!gameStarted && !gameOver) {
+        nextDirection = dir;
+        startGame();
+        return;
+      }
+
+      if (gameOver || !gameStarted) return;
       if (dir.x === -direction.x && dir.y === -direction.y) return;
       nextDirection = dir;
     });
 
     restartBtn.addEventListener('click', () => {
-      init();
-      draw();
+      if (gameOver) {
+        init();
+        draw();
+        startGame();
+      } else {
+        startGame();
+      }
     });
 
     init();
     draw();
-    startLoop();
+    showStartScreen();
   </script>
 </body>
 </html>

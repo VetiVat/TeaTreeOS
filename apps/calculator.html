@@ -19,21 +19,34 @@
     }
 
     .display {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
       background: var(--peat);
       color: var(--text-light);
-      padding: 16px;
+      padding: 10px 16px;
       border-radius: var(--radius-md);
       text-align: right;
-      font-size: 2rem;
-      min-height: 64px;
+      min-height: 72px;
       word-break: break-all;
       border: 2px solid var(--bark);
+      flex-shrink: 0;
     }
 
     .display__expr {
       font-size: 0.85rem;
       color: var(--lichen);
-      min-height: 1.2em;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .display__expr:empty {
+      display: none;
+    }
+
+    .display__value {
+      font-size: 2rem;
+      line-height: 1;
     }
 
     .keys {
@@ -78,7 +91,7 @@
 <body>
   <div class="display">
     <div class="display__expr" id="expr"></div>
-    <div id="value">0</div>
+    <div class="display__value" id="value">0</div>
   </div>
   <div class="keys" id="keys"></div>
 
