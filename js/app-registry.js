@@ -35,15 +35,6 @@ export const APPS = [
     defaultSize: { width: 400, height: 420 },
     defaultPosition: { x: 200, y: 70 },
   },
-  {
-    id: 'lottery',
-    name: 'Seed Lottery',
-    icon: '🌱',
-    path: 'apps/dice.html',
-    desktop: true,
-    defaultSize: { width: 440, height: 540 },
-    defaultPosition: { x: 240, y: 90 },
-  },
 ];
 
 export function getApp(id) {
