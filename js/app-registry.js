@@ -44,6 +44,14 @@ export const APPS = [
     defaultSize: { width: 440, height: 540 },
     defaultPosition: { x: 240, y: 90 },
   },
+  {
+  id: 'file-browser',
+  name: 'File Grove',
+  icon: '📂',
+  path: 'apps/file-browser/file-browser.html',
+  description: 'Browse the tree structure of your apps.',
+  type: 'window' // or 'dock' depending on your launcher
+  },
 ];
 
 export function getApp(id) {
