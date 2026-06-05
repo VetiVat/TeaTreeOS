@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Grove</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/cursors.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      overflow: hidden; /* Let the container handle scrolling if needed */
+      display: flex;
+      flex-direction: column;
+      color: var(--text-dark);
+    }
+
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--fog);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--fog);
+    }
+
+    header h1 {
+      font-size: 0.9rem;
+      color: var(--bark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .path-display {
+      font-size: 0.75rem;
+      color: var(--soil);
+      background: var(--cream);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--fog);
+      max-width: 60%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 16px;
+      align-content: start;
+    }
+
+    .file-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background var(--transition-fast), transform 0.1s;
+      text-align: center;
+      user-select: none;
+    }
+
+    .file-item:hover {
+      background: var(--fog);
+    }
+
+    .file-item:active {
+      transform: scale(0.98);
+    }
+
+    .file-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    .file-name {
+      font-size: 0.75rem;
+      color: var(--bark);
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+    .folder-icon { color: var(--soil); }
+    .file-icon-default { color: var(--moss); }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px 0;
+      color: var(--soil);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+
+    /* Scrollbar styling to match theme */
+    .file-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    .file-container::-webkit-scrollbar-track {
+      background: var(--cream);
+    }
+    .file-container::-webkit-scrollbar-thumb {
+      background: var(--fog);
+      border-radius: 4px;
+    }
+    .file-container::-webkit-scrollbar-thumb:hover {
+      background: var(--soil);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📂 File Grove</h1>
+    <div class="path-display" id="path-display">/</div>
+  </header>
+
+  <div class="file-container" id="file-list">
+    <!-- Files will be injected here -->
+  </div>
+
+  <script>
+    const fileList = document.getElementById('file-list');
+    const pathDisplay = document.getElementById('path-display');
+    let currentPath = '/';
+
+    // Helper to determine icon based on extension or type
+    function getIcon(name, type) {
+      if (type === 'directory') return '📁';
+      const ext = name.split('.').pop().toLowerCase();
+      const icons = {
+        'js': '📜',
+        'html': '📄',
+        'css': '🎨',
+        'png': '🖼️',
+        'jpg': '🖼️',
+        'json': '📋',
+        'txt': '📝',
+        'md': '📝'
+      };
+      return icons[ext] || '📃';
+    }
+
+    function renderFiles(items) {
+      fileList.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        fileList.innerHTML = '<div class="empty-state">This grove is empty.</div>';
+        return;
+      }
+
+      // Sort: Folders first, then files, alphabetically
+      const sortedItems = [...items].sort((a, b) => {
+        if (a.type === 'directory' && b.type !== 'directory') return -1;
+        if (a.type !== 'directory' && b.type === 'directory') return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      sortedItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        
+        const icon = document.createElement('div');
+        icon.className = 'file-icon ' + (item.type === 'directory' ? 'folder-icon' : 'file-icon-default');
+        icon.textContent = getIcon(item.name, item.type);
+        
+        const name = document.createElement('div');
+        name.className = 'file-name';
+        name.textContent = item.name;
+
+        div.appendChild(icon);
+        div.appendChild(name);
+
+        // Click handler
+        div.addEventListener('click', () => {
+          if (item.type === 'directory') {
+            // Navigate down
+            const newPath = currentPath === '/' ? `/${item.name}` : `${currentPath}/${item.name}`;
+            currentPath = newPath;
+            window.parent.postMessage({
+              type: 'teatreeos-request-files',
+              path: currentPath
+            }, '*');
+          } else {
+            // Select file (could open it, but we just signal selection for now)
+            window.parent.postMessage({
+              type: 'teatreeos-file-selected',
+              path: `${currentPath}/${item.name}`,
+              name: item.name
+            }, '*');
+          }
+        });
+
+        fileList.appendChild(div);
+      });
+    }
+
+    // Listen for file list updates from parent
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'teatreeos-files-response') {
+        renderFiles(event.data.files);
+        if (event.data.path) {
+          currentPath = event.data.path;
+          pathDisplay.textContent = currentPath;
+        }
+      }
+      // Handle initial request response if needed, or just wait for parent to send files
+    });
+
+    // Initial load: ask parent for root files
+    window.parent.postMessage({ type: 'teatreeos-request-files', path: '/' }, '*');
+
+  </script>
+</body>
+</html>
