@@ -7,19 +7,34 @@ const STORAGE_KEY = 'teatreeos-fs-handles';
 const API_AVAILABLE = 'showDirectoryPicker' in window;
 
 /**
- * Store a directory handle in IndexedDB for persistence
+ * Shared BroadcastChannel used to signal mount/unmount events to any
+ * same-origin context (e.g. the File Grove iframe) without requiring the
+ * parent page to act as a relay.
+ *
+ * Message shapes:
+ *   { type: 'teatreeos-mount-folder',  name: string, handle: FileSystemDirectoryHandle }
+ *   { type: 'teatreeos-unmount-folder', name: string }
+ */
+export const fsChannel = new BroadcastChannel('teatreeos-fs');
+
+/**
+ * Store a directory handle in IndexedDB for persistence, then broadcast
+ * a mount event so that File Grove (and any other listener) updates itself.
  */
 export async function saveDirectoryHandle(name, dirHandle) {
   if (!API_AVAILABLE) throw new Error('File System Access API not available');
   
   const db = await openDatabase();
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const tx = db.transaction('handles', 'readwrite');
     const store = tx.objectStore('handles');
     store.put({ name, handle: dirHandle });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  // Notify all same-origin contexts (including the File Grove iframe).
+  fsChannel.postMessage({ type: 'teatreeos-mount-folder', name, handle: dirHandle });
 }
 
 /**
@@ -55,48 +70,50 @@ export async function listMountedFolders() {
 }
 
 /**
- * Remove a mounted folder
+ * Remove a mounted folder and broadcast an unmount event.
  */
 export async function removeMountedFolder(name) {
   if (!API_AVAILABLE) throw new Error('File System Access API not available');
   
   const db = await openDatabase();
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const tx = db.transaction('handles', 'readwrite');
     const store = tx.objectStore('handles');
     store.delete(name);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  // Notify listeners so File Grove can clear or switch folders.
+  fsChannel.postMessage({ type: 'teatreeos-unmount-folder', name });
 }
 
 /**
- * Open a directory picker and mount a folder
- * @returns {FileSystemDirectoryHandle} The handle to the selected directory
+ * Open a directory picker, persist the handle, and broadcast a mount event.
+ * Callers no longer need to call saveDirectoryHandle separately — this does it
+ * all and returns the handle for any immediate in-page use.
+ *
+ * @param {string} [name] - Optional display name to store the handle under.
+ *   Defaults to the folder's own name.
  */
-export async function mountFolder() {
+export async function mountFolder(name) {
   if (!API_AVAILABLE) throw new Error('File System Access API not available');
   
+  let dirHandle;
   try {
-    const dirHandle = await window.showDirectoryPicker();
-    
-    // Optional: Auto-save the handle for persistence across reloads
-    // We use a generic name like 'active-mount' or let the consumer handle naming
-    // For this implementation, we will return the handle and let the HTML handle storage if needed
-    // However, to be helpful, let's try to save it as 'current-mount'
-    try {
-        await saveDirectoryHandle('current-mount', dirHandle);
-    } catch (e) {
-        console.warn('Could not persist directory handle:', e);
-    }
-
-    return dirHandle;
+    dirHandle = await window.showDirectoryPicker();
   } catch (err) {
     if (err.name === 'AbortError') {
       throw new Error('Folder selection cancelled');
     }
     throw err;
   }
+
+  // Persist and broadcast (saveDirectoryHandle emits the channel message).
+  const mountName = name ?? dirHandle.name;
+  await saveDirectoryHandle(mountName, dirHandle);
+
+  return dirHandle;
 }
 
 /**
@@ -263,4 +280,3 @@ function openDatabase() {
     };
   });
 }
-
