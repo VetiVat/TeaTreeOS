@@ -21,7 +21,7 @@
 
     .header {
       text-align: center;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .header h1 {
@@ -38,71 +38,48 @@
       font-size: 1.3rem;
     }
 
-    .die-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
-      gap: 6px;
+    .dice-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 140px;
+      overflow-y: auto;
     }
 
-    .die-btn {
-      padding: 8px;
+    .dice-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       background: var(--fog);
-      border: 2px solid var(--lichen);
+      padding: 8px;
       border-radius: var(--radius-md);
-      color: var(--text-dark);
-      cursor: pointer;
-      font-size: 0.8rem;
+      border: 1px solid var(--lichen);
+    }
+
+    .dice-label {
+      min-width: 45px;
       font-weight: 600;
-      transition: all var(--transition-fast);
+      color: var(--bark);
+      font-size: 0.85rem;
     }
 
-    .die-btn:hover {
-      background: var(--mist);
-      transform: translateY(-1px);
-    }
-
-    .die-btn.selected {
-      background: var(--moss);
-      color: var(--text-light);
-      border-color: var(--fern);
-      box-shadow: 0 2px 8px rgba(74, 124, 89, 0.3);
+    .quantity-input {
+      width: 45px;
+      padding: 5px;
+      background: var(--cream);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      font-size: 0.8rem;
+      text-align: center;
     }
 
     .controls {
       display: flex;
-      gap: 8px;
-      align-items: flex-end;
+      gap: 6px;
     }
 
-    .quantity {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .quantity label {
-      font-size: 0.75rem;
-      color: var(--bark);
-      font-weight: 500;
-    }
-
-    .quantity input {
-      width: 55px;
-      padding: 6px;
-      background: var(--fog);
-      border: 1px solid var(--lichen);
-      border-radius: var(--radius-sm);
-      color: var(--text-dark);
-      font-size: 0.85rem;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 8px;
-      flex: 1;
-    }
-
-    .roll-btn {
+    .cast-btn {
       flex: 1;
       padding: 8px 12px;
       background: var(--moss);
@@ -115,12 +92,12 @@
       transition: all var(--transition-fast);
     }
 
-    .roll-btn:hover {
+    .cast-btn:hover {
       background: var(--fern);
       transform: translateY(-2px);
     }
 
-    .roll-btn:active {
+    .cast-btn:active {
       transform: translateY(0);
     }
 
@@ -236,6 +213,23 @@
       font-size: 0.9rem;
       font-style: italic;
     }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--lichen);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--soil);
+    }
   </style>
 </head>
 <body>
@@ -243,104 +237,119 @@
     <h1><span class="header-icon">🌲</span>Forest Fates</h1>
   </div>
 
-  <div class="die-grid" id="dieGrid"></div>
+  <div class="dice-section" id="diceSection"></div>
 
   <div class="controls">
-    <div class="quantity">
-      <label for="quantity">Roll:</label>
-      <input type="number" id="quantity" min="1" max="20" value="1">
-    </div>
-    <div class="button-group">
-      <button class="roll-btn" id="rollBtn" type="button">Cast Runes</button>
-      <button class="reset-btn" id="resetBtn" type="button">Clear</button>
-    </div>
+    <button class="cast-btn" id="castBtn" type="button">Cast Runes</button>
+    <button class="reset-btn" id="resetBtn" type="button">Clear All</button>
   </div>
 
   <div class="history" id="history">
     <div class="empty-state">
       <div class="empty-icon">🌿</div>
-      <div class="empty-text">Select dice and cast your runes...</div>
+      <div class="empty-text">Set your dice and cast your runes...</div>
     </div>
   </div>
 
   <script>
     const DICE_TYPES = [
-      { sides: 2, label: 'd2', name: 'Coin' },
-      { sides: 4, label: 'd4', name: 'Pyramid' },
-      { sides: 6, label: 'd6', name: 'Cube' },
-      { sides: 8, label: 'd8', name: 'Crystal' },
-      { sides: 10, label: 'd10', name: 'Gem' },
-      { sides: 20, label: 'd20', name: 'Fate' },
-      { sides: 100, label: 'd100', name: 'Void' },
+      { sides: 2, label: 'd2' },
+      { sides: 4, label: 'd4' },
+      { sides: 6, label: 'd6' },
+      { sides: 8, label: 'd8' },
+      { sides: 10, label: 'd10' },
+      { sides: 20, label: 'd20' },
+      { sides: 100, label: 'd100' },
     ];
 
     const MAX_HISTORY = 20;
 
     // DOM elements
-    const dieGrid = document.getElementById('dieGrid');
-    const quantityInput = document.getElementById('quantity');
-    const rollBtn = document.getElementById('rollBtn');
+    const diceSection = document.getElementById('diceSection');
+    const castBtn = document.getElementById('castBtn');
     const resetBtn = document.getElementById('resetBtn');
     const history = document.getElementById('history');
 
     // State
-    let selectedDice = null;
+    let diceQuantities = {};
     let rolls = [];
 
-    // Initialize dice buttons
-    function initDice() {
+    // Initialize dice quantities
+    DICE_TYPES.forEach(die => {
+      diceQuantities[die.sides] = 0;
+    });
+
+    // Initialize UI
+    function initializeDice() {
+      diceSection.innerHTML = '';
+      
       DICE_TYPES.forEach((die) => {
-        const btn = document.createElement('button');
-        btn.className = 'die-btn';
-        btn.textContent = die.label;
-        btn.dataset.sides = die.sides;
-        btn.onclick = () => selectDice(die.sides, btn);
-        dieGrid.appendChild(btn);
+        const row = document.createElement('div');
+        row.className = 'dice-row';
+        
+        const label = document.createElement('span');
+        label.className = 'dice-label';
+        label.textContent = die.label;
+        
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'quantity-input';
+        input.min = '0';
+        input.max = '20';
+        input.value = '0';
+        input.dataset.sides = die.sides;
+        input.addEventListener('change', (e) => {
+          diceQuantities[die.sides] = Math.max(0, Math.min(20, parseInt(e.target.value) || 0));
+          e.target.value = diceQuantities[die.sides];
+        });
+        
+        row.appendChild(label);
+        row.appendChild(input);
+        diceSection.appendChild(row);
       });
     }
 
-    // Select a die type
-    function selectDice(sides, btnElement) {
-      selectedDice = sides;
-      
-      // Update UI
-      document.querySelectorAll('.die-btn').forEach(btn => {
-        btn.classList.remove('selected');
-      });
-      btnElement.classList.add('selected');
-    }
-
-    // Roll the selected die
+    // Cast runes (roll all selected dice)
     function castRunes() {
-      if (!selectedDice) {
-        alert('Select a die type first');
+      // Check if at least one die is selected
+      const totalDice = Object.values(diceQuantities).reduce((a, b) => a + b, 0);
+      
+      if (totalDice === 0) {
+        alert('Select at least one die to roll');
         return;
       }
 
-      const quantity = parseInt(quantityInput.value) || 1;
-      
-      if (quantity < 1 || quantity > 20) {
-        quantityInput.value = Math.max(1, Math.min(quantity, 20));
-        return;
-      }
+      const allResults = [];
+      const diceBreakdown = [];
 
-      const results = [];
-      for (let i = 0; i < quantity; i++) {
-        results.push(Math.floor(Math.random() * selectedDice) + 1);
-      }
+      // Roll each die type
+      DICE_TYPES.forEach((die) => {
+        const quantity = diceQuantities[die.sides];
+        if (quantity > 0) {
+          const results = [];
+          for (let i = 0; i < quantity; i++) {
+            results.push(Math.floor(Math.random() * die.sides) + 1);
+          }
+          allResults.push(...results);
+          diceBreakdown.push({
+            label: die.label,
+            quantity: quantity,
+            results: results,
+          });
+        }
+      });
 
-      const total = results.reduce((a, b) => a + b, 0);
-      
+      const total = allResults.reduce((a, b) => a + b, 0);
+
       const roll = {
-        sides: selectedDice,
-        quantity: quantity,
-        results: results,
+        breakdown: diceBreakdown,
+        allResults: allResults,
         total: total,
         timestamp: new Date().toLocaleTimeString(),
       };
 
       rolls.unshift(roll);
-      
+
       // Keep only last 20 rolls
       if (rolls.length > MAX_HISTORY) {
         rolls = rolls.slice(0, MAX_HISTORY);
@@ -355,38 +364,46 @@
         history.innerHTML = `
           <div class="empty-state">
             <div class="empty-icon">🌿</div>
-            <div class="empty-text">Select dice and cast your runes...</div>
+            <div class="empty-text">Set your dice and cast your runes...</div>
           </div>
         `;
         return;
       }
 
-      history.innerHTML = rolls.map(roll => `
-        <div class="roll-entry">
-          <div class="roll-header">
-            <span>${roll.quantity}× d${roll.sides}</span>
-            <span class="roll-time">${roll.timestamp}</span>
+      history.innerHTML = rolls.map(roll => {
+        const diceLabels = roll.breakdown.map(b => `${b.quantity}×${b.label}`).join(' + ');
+        return `
+          <div class="roll-entry">
+            <div class="roll-header">
+              <span>${diceLabels}</span>
+              <span class="roll-time">${roll.timestamp}</span>
+            </div>
+            <div class="roll-values">
+              ${roll.allResults.map(val => `<span class="value-badge">${val}</span>`).join('')}
+            </div>
+            <div class="roll-total">Total: ${roll.total}</div>
           </div>
-          <div class="roll-values">
-            ${roll.results.map(val => `<span class="value-badge">${val}</span>`).join('')}
-          </div>
-          <div class="roll-total">Total: ${roll.total}</div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     // Reset everything
-    function resetApp() {
-      if (confirm('Clear all rolls and deselect dice?')) {
+    function resetAll() {
+      if (confirm('Clear all rolls and reset dice?')) {
+        // Clear roll history
         rolls = [];
-        selectedDice = null;
-        quantityInput.value = '1';
         
-        // Deselect all buttons
-        document.querySelectorAll('.die-btn').forEach(btn => {
-          btn.classList.remove('selected');
+        // Reset all dice quantities to 0
+        DICE_TYPES.forEach(die => {
+          diceQuantities[die.sides] = 0;
         });
         
+        // Reset UI inputs
+        document.querySelectorAll('.quantity-input').forEach(input => {
+          input.value = '0';
+        });
+        
+        // Re-render history
         renderHistory();
       }
     }
@@ -394,19 +411,24 @@
     // Clear on page unload
     window.addEventListener('beforeunload', () => {
       rolls = [];
-      selectedDice = null;
+      DICE_TYPES.forEach(die => {
+        diceQuantities[die.sides] = 0;
+      });
     });
 
     // Event listeners
-    rollBtn.addEventListener('click', castRunes);
-    resetBtn.addEventListener('click', resetApp);
+    castBtn.addEventListener('click', castRunes);
+    resetBtn.addEventListener('click', resetAll);
 
-    quantityInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') castRunes();
+    // Allow Enter key to cast runes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.classList.contains('quantity-input')) {
+        castRunes();
+      }
     });
 
     // Initialize
-    initDice();
+    initializeDice();
     renderHistory();
   </script>
 </body>
