@@ -1,6 +1,7 @@
 import * as WindowManager from './window-manager.js';
 import { initDesktop } from './desktop.js';
 import { initTaskbar, updateTaskbar } from './taskbar.js';
+import { initCursors, pushCursor, popCursor } from './cursors.js';
 
 const WALLPAPER_KEY = 'teatreeos-wallpaper';
 const WALLPAPER_CLASSES = ['wallpaper-mist', 'wallpaper-forest', 'wallpaper-bark'];
@@ -21,9 +22,12 @@ function boot() {
   const bootEl = document.getElementById('boot');
   const shellEl = document.getElementById('os-shell');
 
+  pushCursor('busy');
+
   setTimeout(() => {
     bootEl.classList.add('hidden');
     shellEl.classList.add('visible');
+    popCursor();
     setTimeout(() => {
       bootEl.classList.add('removed');
     }, 300);
@@ -31,6 +35,8 @@ function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initCursors();
+
   const windowsContainer = document.getElementById('windows');
   const desktopIcons = document.getElementById('desktop-icons');
 

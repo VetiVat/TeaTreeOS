@@ -52,7 +52,6 @@
   width: 88px;
   padding: 8px 4px;
   border-radius: var(--radius-md);
-  cursor: pointer;
   user-select: none;
   transition: background var(--transition-fast);
 }

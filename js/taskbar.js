@@ -37,6 +37,7 @@ function renderStartMenu() {
     const item = document.createElement('button');
     item.className = 'start-menu__item';
     item.type = 'button';
+    item.dataset.cursor = 'link';
     item.innerHTML = `
       <span class="start-menu__item-icon">${app.icon}</span>
       <span>${app.name}</span>
@@ -61,6 +62,7 @@ export function updateTaskbar(openWindows) {
 
     const btn = document.createElement('button');
     btn.className = 'taskbar-window-btn';
+    btn.dataset.cursor = 'link';
     if (state.minimized) btn.classList.add('minimized');
     if (focused && focused[0] === appId && !state.minimized) btn.classList.add('active');
     btn.type = 'button';

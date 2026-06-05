@@ -10,6 +10,7 @@ export function initDesktop(container, openApp) {
     const icon = document.createElement('div');
     icon.className = 'desktop-icon';
     icon.dataset.appId = app.id;
+    icon.dataset.cursor = 'link';
     icon.setAttribute('role', 'button');
     icon.setAttribute('tabindex', '0');
     icon.setAttribute('aria-label', `Open ${app.name}`);

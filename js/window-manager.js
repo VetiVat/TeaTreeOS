@@ -1,4 +1,5 @@
 import { getApp } from './app-registry.js';
+import { pushCursor, popCursor } from './cursors.js';
 
 let zIndexCounter = 10;
 let taskbarCallback = null;
@@ -38,18 +39,29 @@ export function open(appId) {
   win.style.zIndex = String(++zIndexCounter);
 
   win.innerHTML = `
-    <div class="window-titlebar">
+    <div class="window-titlebar" data-cursor="move">
       <span class="window-title">${app.name}</span>
       <div class="window-controls">
-        <button data-action="minimize" type="button" title="Minimize" aria-label="Minimize">−</button>
-        <button data-action="maximize" type="button" title="Maximize" aria-label="Maximize">□</button>
-        <button data-action="close" type="button" title="Close" aria-label="Close">×</button>
+        <button data-action="minimize" type="button" data-cursor="link" title="Minimize" aria-label="Minimize">−</button>
+        <button data-action="maximize" type="button" data-cursor="link" title="Maximize" aria-label="Maximize">□</button>
+        <button data-action="close" type="button" data-cursor="link" title="Close" aria-label="Close">×</button>
       </div>
     </div>
     <div class="window-body">
       <iframe src="${app.path}" sandbox="allow-scripts allow-same-origin" title="${app.name}"></iframe>
     </div>
   `;
+
+  const iframe = win.querySelector('iframe');
+  pushCursor('working');
+  let loadingCursorCleared = false;
+  const clearLoadingCursor = () => {
+    if (loadingCursorCleared) return;
+    loadingCursorCleared = true;
+    popCursor();
+  };
+  iframe.addEventListener('load', clearLoadingCursor, { once: true });
+  iframe.addEventListener('error', clearLoadingCursor, { once: true });
 
   const state = {
     element: win,
@@ -92,6 +104,7 @@ function bindWindowEvents(win, state) {
 
 function startDrag(e, win, state) {
   e.preventDefault();
+  pushCursor('move');
   const startX = e.clientX;
   const startY = e.clientY;
   const rect = win.getBoundingClientRect();
@@ -111,6 +124,7 @@ function startDrag(e, win, state) {
   }
 
   function onUp() {
+    popCursor();
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
   }

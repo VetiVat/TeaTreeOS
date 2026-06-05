@@ -32,13 +32,8 @@
   padding: 0 4px 0 12px;
   background: linear-gradient(180deg, var(--bark) 0%, #4a3528 100%);
   color: var(--text-light);
-  cursor: grab;
   user-select: none;
   flex-shrink: 0;
-}
-
-.window-titlebar:active {
-  cursor: grabbing;
 }
 
 .window.focused .window-titlebar {

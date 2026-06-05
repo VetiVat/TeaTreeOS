@@ -6,6 +6,7 @@
   <title>TeaTreeOS</title>
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/cursors.css">
   <link rel="stylesheet" href="css/desktop.css">
   <link rel="stylesheet" href="css/taskbar.css">
   <link rel="stylesheet" href="css/windows.css">
@@ -106,7 +107,7 @@
     <p>TeaTreeOS needs a wider viewport.<br>Please use a desktop-sized window (640px+).</p>
   </div>
 
-  <div id="boot" aria-live="polite">
+  <div id="boot" data-cursor="busy" aria-live="polite">
     <div class="boot-logo">🌿</div>
     <div class="boot-title">TeaTreeOS</div>
     <div class="boot-tagline">growing your workspace...</div>
@@ -114,19 +115,19 @@
   </div>
 
   <div id="os-shell">
-    <div id="desktop" class="wallpaper-mist">
+    <div id="desktop" class="wallpaper-mist" data-cursor="normal">
       <div class="desktop-icons" id="desktop-icons"></div>
     </div>
 
     <div id="windows"></div>
 
     <nav id="taskbar">
-      <button class="taskbar-root" id="taskbar-root" type="button" aria-expanded="false" aria-controls="start-menu">
+      <button class="taskbar-root" id="taskbar-root" type="button" data-cursor="link" aria-expanded="false" aria-controls="start-menu" title="Open Root menu">
         <span class="taskbar-root__icon">🌱</span>
         <span>Root</span>
       </button>
       <div class="taskbar-windows" id="taskbar-windows"></div>
-      <time class="taskbar-clock" id="taskbar-clock"></time>
+      <time class="taskbar-clock" id="taskbar-clock" data-cursor="normal"></time>
     </nav>
 
     <div id="start-menu" role="menu" aria-label="Start menu">
