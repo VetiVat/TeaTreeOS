@@ -54,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
       event.source?.postMessage({ type: 'teatreeos-settings-state', wallpaper }, '*');
     }
     if (event.data?.type === 'teatreeos-unmount') {
-      // remove the tab/entry for event.data.folderName
+      WindowManager.closeByTitle(event.data.folderName);
+      updateTaskbar();
     }
   });
 
