@@ -47,8 +47,8 @@ export const APPS = [
   {
   id: 'file-browser',
   name: 'File Grove',
-  icon: '📂',
-  path: 'apps/file-browser.html',
+  icon: '🌳',
+  path: 'apps/file-grove.html',
   defaultSize: { width: 440, height: 540 },
   deafultPosition: { x: 240, y: 90 },
   },
