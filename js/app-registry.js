@@ -36,12 +36,12 @@ export const APPS = [
     defaultPosition: { x: 200, y: 70 },
   },
   {
-    id: 'dice',
-    name: 'Dice Roller',
-    icon: '🎲',
+    id: 'lottery',
+    name: 'Seed Lottery',
+    icon: '🌱',
     path: 'apps/dice.html',
     desktop: true,
-    defaultSize: { width: 420, height: 500 },
+    defaultSize: { width: 440, height: 540 },
     defaultPosition: { x: 240, y: 90 },
   },
 ];
