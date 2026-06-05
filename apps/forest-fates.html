@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forest Fates</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/cursors.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 12px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--bark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .header-icon {
+      font-size: 1.3rem;
+    }
+
+    .die-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+      gap: 6px;
+    }
+
+    .die-btn {
+      padding: 8px;
+      background: var(--fog);
+      border: 2px solid var(--lichen);
+      border-radius: var(--radius-md);
+      color: var(--text-dark);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+
+    .die-btn:hover {
+      background: var(--mist);
+      transform: translateY(-1px);
+    }
+
+    .die-btn.selected {
+      background: var(--moss);
+      color: var(--text-light);
+      border-color: var(--fern);
+      box-shadow: 0 2px 8px rgba(74, 124, 89, 0.3);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .quantity {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .quantity label {
+      font-size: 0.75rem;
+      color: var(--bark);
+      font-weight: 500;
+    }
+
+    .quantity input {
+      width: 55px;
+      padding: 6px;
+      background: var(--fog);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      font-size: 0.85rem;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .roll-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--moss);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+
+    .roll-btn:hover {
+      background: var(--fern);
+      transform: translateY(-2px);
+    }
+
+    .roll-btn:active {
+      transform: translateY(0);
+    }
+
+    .reset-btn {
+      padding: 8px 12px;
+      background: var(--soil);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+
+    .reset-btn:hover {
+      background: var(--bark);
+    }
+
+    .history {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .roll-entry {
+      padding: 10px;
+      background: var(--fog);
+      border-left: 3px solid var(--moss);
+      border-radius: var(--radius-sm);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .roll-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--bark);
+      font-size: 0.9rem;
+    }
+
+    .roll-time {
+      font-size: 0.7rem;
+      color: var(--soil);
+    }
+
+    .roll-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    .value-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 6px;
+      background: var(--cream);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .roll-total {
+      padding-top: 6px;
+      border-top: 1px solid var(--lichen);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--moss);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--soil);
+      text-align: center;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      font-size: 2.5rem;
+      opacity: 0.5;
+    }
+
+    .empty-text {
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><span class="header-icon">🌲</span>Forest Fates</h1>
+  </div>
+
+  <div class="die-grid" id="dieGrid"></div>
+
+  <div class="controls">
+    <div class="quantity">
+      <label for="quantity">Roll:</label>
+      <input type="number" id="quantity" min="1" max="20" value="1">
+    </div>
+    <div class="button-group">
+      <button class="roll-btn" id="rollBtn" type="button">Cast Runes</button>
+      <button class="reset-btn" id="resetBtn" type="button">Clear</button>
+    </div>
+  </div>
+
+  <div class="history" id="history">
+    <div class="empty-state">
+      <div class="empty-icon">🌿</div>
+      <div class="empty-text">Select dice and cast your runes...</div>
+    </div>
+  </div>
+
+  <script>
+    const DICE_TYPES = [
+      { sides: 2, label: 'd2', name: 'Coin' },
+      { sides: 4, label: 'd4', name: 'Pyramid' },
+      { sides: 6, label: 'd6', name: 'Cube' },
+      { sides: 8, label: 'd8', name: 'Crystal' },
+      { sides: 10, label: 'd10', name: 'Gem' },
+      { sides: 20, label: 'd20', name: 'Fate' },
+      { sides: 100, label: 'd100', name: 'Void' },
+    ];
+
+    const MAX_HISTORY = 20;
+
+    // DOM elements
+    const dieGrid = document.getElementById('dieGrid');
+    const quantityInput = document.getElementById('quantity');
+    const rollBtn = document.getElementById('rollBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const history = document.getElementById('history');
+
+    // State
+    let selectedDice = null;
+    let rolls = [];
+
+    // Initialize dice buttons
+    function initDice() {
+      DICE_TYPES.forEach((die) => {
+        const btn = document.createElement('button');
+        btn.className = 'die-btn';
+        btn.textContent = die.label;
+        btn.dataset.sides = die.sides;
+        btn.onclick = () => selectDice(die.sides, btn);
+        dieGrid.appendChild(btn);
+      });
+    }
+
+    // Select a die type
+    function selectDice(sides, btnElement) {
+      selectedDice = sides;
+      
+      // Update UI
+      document.querySelectorAll('.die-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      btnElement.classList.add('selected');
+    }
+
+    // Roll the selected die
+    function castRunes() {
+      if (!selectedDice) {
+        alert('Select a die type first');
+        return;
+      }
+
+      const quantity = parseInt(quantityInput.value) || 1;
+      
+      if (quantity < 1 || quantity > 20) {
+        quantityInput.value = Math.max(1, Math.min(quantity, 20));
+        return;
+      }
+
+      const results = [];
+      for (let i = 0; i < quantity; i++) {
+        results.push(Math.floor(Math.random() * selectedDice) + 1);
+      }
+
+      const total = results.reduce((a, b) => a + b, 0);
+      
+      const roll = {
+        sides: selectedDice,
+        quantity: quantity,
+        results: results,
+        total: total,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      rolls.unshift(roll);
+      
+      // Keep only last 20 rolls
+      if (rolls.length > MAX_HISTORY) {
+        rolls = rolls.slice(0, MAX_HISTORY);
+      }
+
+      renderHistory();
+    }
+
+    // Render roll history
+    function renderHistory() {
+      if (rolls.length === 0) {
+        history.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🌿</div>
+            <div class="empty-text">Select dice and cast your runes...</div>
+          </div>
+        `;
+        return;
+      }
+
+      history.innerHTML = rolls.map(roll => `
+        <div class="roll-entry">
+          <div class="roll-header">
+            <span>${roll.quantity}× d${roll.sides}</span>
+            <span class="roll-time">${roll.timestamp}</span>
+          </div>
+          <div class="roll-values">
+            ${roll.results.map(val => `<span class="value-badge">${val}</span>`).join('')}
+          </div>
+          <div class="roll-total">Total: ${roll.total}</div>
+        </div>
+      `).join('');
+    }
+
+    // Reset everything
+    function resetApp() {
+      if (confirm('Clear all rolls and deselect dice?')) {
+        rolls = [];
+        selectedDice = null;
+        quantityInput.value = '1';
+        
+        // Deselect all buttons
+        document.querySelectorAll('.die-btn').forEach(btn => {
+          btn.classList.remove('selected');
+        });
+        
+        renderHistory();
+      }
+    }
+
+    // Clear on page unload
+    window.addEventListener('beforeunload', () => {
+      rolls = [];
+      selectedDice = null;
+    });
+
+    // Event listeners
+    rollBtn.addEventListener('click', castRunes);
+    resetBtn.addEventListener('click', resetApp);
+
+    quantityInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') castRunes();
+    });
+
+    // Initialize
+    initDice();
+    renderHistory();
+  </script>
+</body>
+</html>
