@@ -72,12 +72,24 @@ export async function removeMountedFolder(name) {
 
 /**
  * Open a directory picker and mount a folder
+ * @returns {FileSystemDirectoryHandle} The handle to the selected directory
  */
 export async function mountFolder() {
   if (!API_AVAILABLE) throw new Error('File System Access API not available');
   
   try {
     const dirHandle = await window.showDirectoryPicker();
+    
+    // Optional: Auto-save the handle for persistence across reloads
+    // We use a generic name like 'active-mount' or let the consumer handle naming
+    // For this implementation, we will return the handle and let the HTML handle storage if needed
+    // However, to be helpful, let's try to save it as 'current-mount'
+    try {
+        await saveDirectoryHandle('current-mount', dirHandle);
+    } catch (e) {
+        console.warn('Could not persist directory handle:', e);
+    }
+
     return dirHandle;
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -251,3 +263,4 @@ function openDatabase() {
     };
   });
 }
+
