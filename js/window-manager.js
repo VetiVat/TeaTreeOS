@@ -199,6 +199,16 @@ export function close(appId) {
   notifyTaskbar();
 }
 
+export function closeByTitle(title) {
+  for (const [appId, state] of openWindows) {
+    const titleEl = state.element.querySelector('.window-title');
+    if (titleEl && titleEl.textContent === title) {
+      close(appId);
+      return;
+    }
+  }
+}
+
 export function getOpenWindows() {
   return openWindows;
 }
