@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dice Roller</title>
+  <title>Seed Lottery</title>
   <link rel="stylesheet" href="../css/theme.css">
   <link rel="stylesheet" href="../css/cursors.css">
   <style>
@@ -20,60 +20,85 @@
     }
 
     .header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      text-align: center;
       color: var(--bark);
+      margin-bottom: 8px;
     }
 
     .header h1 {
-      font-size: 1rem;
+      font-size: 1.2rem;
       font-weight: 600;
     }
 
-    .dice-selector {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .header p {
+      font-size: 0.8rem;
+      color: var(--soil);
+      margin-top: 2px;
     }
 
-    .dice-btn {
-      padding: 8px 12px;
+    .seed-types {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      gap: 8px;
+    }
+
+    .seed-btn {
+      padding: 10px;
       background: var(--fog);
       border: 2px solid var(--lichen);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
       color: var(--text-dark);
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 500;
       transition: all var(--transition-fast);
-      data-cursor: link;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
     }
 
-    .dice-btn:hover {
+    .seed-btn:hover {
       background: var(--mist);
+      transform: translateY(-2px);
     }
 
-    .dice-btn.active {
+    .seed-btn.selected {
       background: var(--moss);
       color: var(--text-light);
       border-color: var(--fern);
+      box-shadow: 0 2px 8px rgba(74, 124, 89, 0.3);
+    }
+
+    .seed-icon {
+      font-size: 1.5rem;
+    }
+
+    .seed-label {
+      font-size: 0.75rem;
     }
 
     .controls {
       display: flex;
       gap: 8px;
-      align-items: center;
+      align-items: flex-end;
     }
 
-    .roll-count {
+    .quantity-control {
       display: flex;
-      align-items: center;
-      gap: 6px;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .roll-count input {
-      width: 50px;
-      padding: 6px;
+    .quantity-control label {
+      font-size: 0.8rem;
+      color: var(--bark);
+      font-weight: 500;
+    }
+
+    .quantity-control input {
+      width: 60px;
+      padding: 8px;
       background: var(--fog);
       border: 1px solid var(--lichen);
       border-radius: var(--radius-sm);
@@ -81,31 +106,49 @@
       font-size: 0.9rem;
     }
 
-    .roll-count label {
-      font-size: 0.9rem;
-      color: var(--bark);
-      font-weight: 500;
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex: 1;
     }
 
-    .roll-btn {
-      padding: 10px 20px;
+    .grow-btn {
+      flex: 1;
+      padding: 10px 16px;
       background: var(--moss);
       color: var(--text-light);
       border: none;
       border-radius: var(--radius-md);
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       transition: all var(--transition-fast);
-      flex: 1;
     }
 
-    .roll-btn:hover {
+    .grow-btn:hover {
       background: var(--fern);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(74, 124, 89, 0.3);
     }
 
-    .roll-btn:active {
-      transform: scale(0.98);
+    .grow-btn:active {
+      transform: translateY(0);
+    }
+
+    .reset-btn {
+      padding: 10px 16px;
+      background: var(--soil);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+
+    .reset-btn:hover {
+      background: var(--bark);
     }
 
     .results {
@@ -117,281 +160,287 @@
       padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .roll-result {
+    .harvest {
       padding: 12px;
       background: var(--fog);
       border-left: 4px solid var(--moss);
       border-radius: var(--radius-sm);
+      animation: grow-in 0.4s ease-out;
     }
 
-    .roll-result__header {
+    @keyframes grow-in {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .harvest-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
-    }
-
-    .roll-result__title {
       font-weight: 600;
       color: var(--bark);
-      font-size: 0.95rem;
     }
 
-    .roll-result__time {
+    .harvest-time {
       font-size: 0.75rem;
       color: var(--soil);
     }
 
-    .roll-result__values {
+    .harvest-seeds {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      margin-bottom: 8px;
     }
 
-    .roll-value {
+    .seed-result {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
+      min-width: 36px;
+      height: 36px;
+      padding: 0 8px;
       background: var(--cream);
       border: 1px solid var(--lichen);
       border-radius: var(--radius-sm);
       color: var(--text-dark);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
     }
 
-    .roll-result__total {
-      margin-top: 8px;
+    .harvest-total {
       padding-top: 8px;
       border-top: 1px solid var(--lichen);
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       color: var(--moss);
     }
 
     .empty-state {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100%;
       color: var(--soil);
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 8px;
+      opacity: 0.6;
+    }
+
+    .empty-text {
       font-style: italic;
     }
 
-    .clear-btn {
-      padding: 8px 12px;
-      background: var(--soil);
-      color: var(--text-light);
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: background var(--transition-fast);
-    }
-
-    .clear-btn:hover {
-      background: var(--bark);
-    }
-
-    .results-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--lichen);
-      font-size: 0.85rem;
+    .harvest-count {
+      font-size: 0.75rem;
       color: var(--soil);
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <span>🎲</span>
-    <h1>Dice Roller</h1>
+    <h1>🌱 Seed Lottery</h1>
+    <p>Plant your fortune with nature's chance</p>
   </div>
 
-  <div class="dice-selector" id="dice-selector"></div>
+  <div class="seed-types" id="seedTypes"></div>
 
   <div class="controls">
-    <div class="roll-count">
-      <label for="roll-count">Rolls:</label>
-      <input type="number" id="roll-count" min="1" max="100" value="1">
+    <div class="quantity-control">
+      <label for="quantity">How many:</label>
+      <input type="number" id="quantity" min="1" max="50" value="1">
     </div>
-    <button class="roll-btn" id="roll-btn" type="button">Roll</button>
-    <button class="clear-btn" id="clear-btn" type="button">Clear</button>
+    <div class="button-group">
+      <button class="grow-btn" id="growBtn" type="button">Grow Seeds</button>
+      <button class="reset-btn" id="resetBtn" type="button">Clear</button>
+    </div>
   </div>
 
   <div class="results" id="results">
-    <div class="empty-state">Roll the dice to begin...</div>
+    <div class="empty-state">
+      <div class="empty-icon">🌾</div>
+      <div class="empty-text">Select a seed type and plant your fortune...</div>
+    </div>
   </div>
 
   <script>
-    const STORAGE_KEY = 'teatreeos-dice-rolls';
-    const DICE_TYPES = [4, 6, 8, 10, 12, 20, 100];
-    const DEFAULT_DICE = 20;
-    const DEFAULT_ROLLS = 1;
+    // Seeds configuration with nature-themed names
+    const SEEDS = {
+      acorn: { name: 'Acorn', icon: '🌰', max: 20 },
+      cherry: { name: 'Cherry', icon: '🍒', max: 30 },
+      apple: { name: 'Apple', icon: '🍎', max: 25 },
+      berry: { name: 'Berry', icon: '🫐', max: 35 },
+      mushroom: { name: 'Mushroom', icon: '🍄', max: 15 },
+      leaf: { name: 'Leaf', icon: '🍃', max: 50 },
+    };
 
-    const diceSelector = document.getElementById('dice-selector');
-    const rollBtn = document.getElementById('roll-btn');
-    const clearBtn = document.getElementById('clear-btn');
+    // DOM elements
+    const seedTypesContainer = document.getElementById('seedTypes');
+    const quantityInput = document.getElementById('quantity');
+    const growBtn = document.getElementById('growBtn');
+    const resetBtn = document.getElementById('resetBtn');
     const resultsContainer = document.getElementById('results');
-    const rollCountInput = document.getElementById('roll-count');
 
-    let selectedDice = DEFAULT_DICE;
-    let rolls = [];
-    let diceBtns = {};
+    // State
+    let selectedSeed = 'acorn';
+    let harvests = [];
 
-    // Initialize dice buttons
-    DICE_TYPES.forEach((sides) => {
-      const btn = document.createElement('button');
-      btn.className = 'dice-btn';
-      if (sides === DEFAULT_DICE) btn.classList.add('active');
-      btn.textContent = `d${sides}`;
-      btn.setAttribute('data-cursor', 'link');
-      btn.setAttribute('data-sides', sides);
-      btn.addEventListener('click', (e) => selectDice(sides, btn));
-      diceBtns[sides] = btn;
-      diceSelector.appendChild(btn);
-    });
-
-    function selectDice(sides, btn) {
-      selectedDice = sides;
-      // Remove active from all buttons
-      Object.values(diceBtns).forEach((button) => {
-        button.classList.remove('active');
+    // Initialize seed buttons
+    function initializeSeeds() {
+      Object.entries(SEEDS).forEach(([key, seed]) => {
+        const btn = document.createElement('button');
+        btn.className = 'seed-btn';
+        if (key === 'acorn') btn.classList.add('selected');
+        btn.innerHTML = `
+          <span class="seed-icon">${seed.icon}</span>
+          <span class="seed-label">d${seed.max}</span>
+        `;
+        btn.onclick = () => selectSeed(key, btn);
+        seedTypesContainer.appendChild(btn);
       });
-      // Add active to the clicked button
-      btn.classList.add('active');
     }
 
-    function rollDice() {
-      const numRolls = parseInt(rollCountInput.value) || 1;
-      if (numRolls < 1 || numRolls > 100) {
-        rollCountInput.value = Math.max(1, Math.min(numRolls, 100));
+    // Select a seed type
+    function selectSeed(seedKey, btnElement) {
+      selectedSeed = seedKey;
+      
+      // Update UI
+      document.querySelectorAll('.seed-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      btnElement.classList.add('selected');
+    }
+
+    // Grow seeds (roll dice)
+    function growSeeds() {
+      const quantity = parseInt(quantityInput.value) || 1;
+      
+      if (quantity < 1 || quantity > 50) {
+        quantityInput.value = Math.max(1, Math.min(quantity, 50));
         return;
       }
 
+      const seed = SEEDS[selectedSeed];
       const results = [];
-      for (let i = 0; i < numRolls; i++) {
-        results.push(Math.floor(Math.random() * selectedDice) + 1);
+
+      for (let i = 0; i < quantity; i++) {
+        results.push(Math.floor(Math.random() * seed.max) + 1);
       }
 
       const total = results.reduce((a, b) => a + b, 0);
-      const roll = {
-        dice: `d${selectedDice}`,
-        count: numRolls,
-        results,
-        total,
+      
+      const harvest = {
+        seedType: selectedSeed,
+        seedName: seed.name,
+        seedIcon: seed.icon,
+        quantity: quantity,
+        results: results,
+        total: total,
         timestamp: new Date().toLocaleTimeString(),
       };
 
-      rolls.unshift(roll);
-      if (rolls.length > 50) rolls.pop();
+      harvests.unshift(harvest);
+      if (harvests.length > 50) harvests.pop();
 
-      saveRolls();
-      renderRolls();
+      renderHarvests();
     }
 
-    function renderRolls() {
-      if (rolls.length === 0) {
-        resultsContainer.innerHTML = '<div class="empty-state">Roll the dice to begin...</div>';
+    // Render harvest results
+    function renderHarvests() {
+      if (harvests.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🌾</div>
+            <div class="empty-text">Select a seed type and plant your fortune...</div>
+          </div>
+        `;
         return;
       }
 
-      resultsContainer.innerHTML = rolls.map((roll, index) => `
-        <div class="roll-result">
-          <div class="roll-result__header">
-            <span class="roll-result__title">${roll.count}× ${roll.dice}</span>
-            <span class="roll-result__time">${roll.timestamp}</span>
+      resultsContainer.innerHTML = harvests.map(harvest => `
+        <div class="harvest">
+          <div class="harvest-header">
+            <span>${harvest.seedIcon} ${harvest.quantity}× ${harvest.seedName}</span>
+            <span class="harvest-time">${harvest.timestamp}</span>
           </div>
-          <div class="roll-result__values">
-            ${roll.results.map((val) => `<span class="roll-value">${val}</span>`).join('')}
+          <div class="harvest-seeds">
+            ${harvest.results.map(val => `<span class="seed-result">${val}</span>`).join('')}
           </div>
-          <div class="roll-result__total">Total: ${roll.total}</div>
+          <div class="harvest-total">🌱 Total growth: ${harvest.total}</div>
+          <div class="harvest-count">${harvest.results.length} seed${harvest.results.length !== 1 ? 's' : ''} sprouted</div>
         </div>
-      `).join('') + '<div class="results-footer"><span>' + rolls.length + ' roll' + (rolls.length !== 1 ? 's' : '') + ' recorded</span></div>';
+      `).join('');
     }
 
-    function saveRolls() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rolls));
-    }
-
-    function loadRolls() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          rolls = JSON.parse(saved);
-        } catch (e) {
-          rolls = [];
-        }
-      }
-      renderRolls();
-    }
-
+    // Reset the app
     function resetApp() {
-      // Clear roll history and localStorage
-      rolls = [];
-      localStorage.removeItem(STORAGE_KEY);
-      
-      // Reset dice selection to default
-      selectedDice = DEFAULT_DICE;
-      Object.values(diceBtns).forEach((btn) => {
-        btn.classList.remove('active');
-      });
-      diceBtns[DEFAULT_DICE].classList.add('active');
-      
-      // Reset roll count to default
-      rollCountInput.value = DEFAULT_ROLLS;
-      
-      // Re-render empty state
-      renderRolls();
+      if (confirm('Clear all harvests and reset the garden?')) {
+        // Clear all harvests
+        harvests = [];
+        
+        // Reset UI
+        quantityInput.value = '1';
+        
+        // Re-render empty state
+        renderHarvests();
+      }
     }
 
-    rollBtn.addEventListener('click', rollDice);
-    
-    clearBtn.addEventListener('click', () => {
-      if (confirm('Reset app to defaults and clear all roll history?')) {
-        resetApp();
-      }
+    // Clear localStorage when page unloads
+    window.addEventListener('beforeunload', () => {
+      harvests = [];
     });
 
-    rollCountInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') rollDice();
+    // Event listeners
+    growBtn.addEventListener('click', growSeeds);
+    resetBtn.addEventListener('click', resetApp);
+
+    quantityInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') growSeeds();
     });
 
-    // Keyboard support for dice selection
+    // Keyboard shortcuts for seed selection
     document.addEventListener('keydown', (e) => {
       const keyMap = {
-        '4': 4,
-        '6': 6,
-        '8': 8,
-        '0': 10,
-        '2': 12,
-        '1': 20,
-        '%': 100,
+        '1': 'acorn',
+        '2': 'cherry',
+        '3': 'apple',
+        '4': 'berry',
+        '5': 'mushroom',
+        '6': 'leaf',
       };
-      if (keyMap[e.key] && !e.ctrlKey && !e.metaKey) {
-        const sides = keyMap[e.key];
-        selectDice(sides, diceBtns[sides]);
+      
+      if (keyMap[e.key]) {
+        const seedKey = keyMap[e.key];
+        selectedSeed = seedKey;
+        
+        // Update UI
+        document.querySelectorAll('.seed-btn').forEach((btn, index) => {
+          const key = Object.keys(SEEDS)[index];
+          btn.classList.toggle('selected', key === seedKey);
+        });
       }
-      if (e.key === 'Enter' && e.target === rollCountInput) {
-        rollDice();
-      }
-    });
-
-    // Clear app state when page is about to unload
-    window.addEventListener('unload', () => {
-      localStorage.removeItem(STORAGE_KEY);
     });
 
     // Initialize
-    loadRolls();
+    initializeSeeds();
+    renderHarvests();
   </script>
 </body>
 </html>
