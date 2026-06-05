@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dice Roller</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/cursors.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 12px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--bark);
+    }
+
+    .header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .dice-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .dice-btn {
+      padding: 8px 12px;
+      background: var(--fog);
+      border: 2px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all var(--transition-fast);
+      data-cursor: link;
+    }
+
+    .dice-btn:hover {
+      background: var(--mist);
+    }
+
+    .dice-btn.active {
+      background: var(--moss);
+      color: var(--text-light);
+      border-color: var(--fern);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .roll-count {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .roll-count input {
+      width: 50px;
+      padding: 6px;
+      background: var(--fog);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      font-size: 0.9rem;
+    }
+
+    .roll-count label {
+      font-size: 0.9rem;
+      color: var(--bark);
+      font-weight: 500;
+    }
+
+    .roll-btn {
+      padding: 10px 20px;
+      background: var(--moss);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+      flex: 1;
+    }
+
+    .roll-btn:hover {
+      background: var(--fern);
+    }
+
+    .roll-btn:active {
+      transform: scale(0.98);
+    }
+
+    .results {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .roll-result {
+      padding: 12px;
+      background: var(--fog);
+      border-left: 4px solid var(--moss);
+      border-radius: var(--radius-sm);
+    }
+
+    .roll-result__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .roll-result__title {
+      font-weight: 600;
+      color: var(--bark);
+      font-size: 0.95rem;
+    }
+
+    .roll-result__time {
+      font-size: 0.75rem;
+      color: var(--soil);
+    }
+
+    .roll-result__values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .roll-value {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--cream);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--text-dark);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .roll-result__total {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--lichen);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--moss);
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--soil);
+      font-style: italic;
+    }
+
+    .clear-btn {
+      padding: 8px 12px;
+      background: var(--soil);
+      color: var(--text-light);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background var(--transition-fast);
+    }
+
+    .clear-btn:hover {
+      background: var(--bark);
+    }
+
+    .results-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--lichen);
+      font-size: 0.85rem;
+      color: var(--soil);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span>🎲</span>
+    <h1>Dice Roller</h1>
+  </div>
+
+  <div class="dice-selector" id="dice-selector"></div>
+
+  <div class="controls">
+    <div class="roll-count">
+      <label for="roll-count">Rolls:</label>
+      <input type="number" id="roll-count" min="1" max="100" value="1">
+    </div>
+    <button class="roll-btn" id="roll-btn" type="button">Roll</button>
+    <button class="clear-btn" id="clear-btn" type="button">Clear</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="empty-state">Roll the dice to begin...</div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'teatreeos-dice-rolls';
+    const DICE_TYPES = [4, 6, 8, 10, 12, 20, 100];
+
+    const diceSelector = document.getElementById('dice-selector');
+    const rollBtn = document.getElementById('roll-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const resultsContainer = document.getElementById('results');
+    const rollCountInput = document.getElementById('roll-count');
+
+    let selectedDice = 20;
+    let rolls = [];
+
+    // Initialize dice buttons
+    DICE_TYPES.forEach((sides) => {
+      const btn = document.createElement('button');
+      btn.className = 'dice-btn';
+      if (sides === 20) btn.classList.add('active');
+      btn.textContent = `d${sides}`;
+      btn.setAttribute('data-cursor', 'link');
+      btn.addEventListener('click', () => selectDice(sides));
+      diceSelector.appendChild(btn);
+    });
+
+    function selectDice(sides) {
+      selectedDice = sides;
+      document.querySelectorAll('.dice-btn').forEach((btn) => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+    }
+
+    function rollDice() {
+      const numRolls = parseInt(rollCountInput.value) || 1;
+      if (numRolls < 1 || numRolls > 100) {
+        rollCountInput.value = Math.max(1, Math.min(numRolls, 100));
+        return;
+      }
+
+      const results = [];
+      for (let i = 0; i < numRolls; i++) {
+        results.push(Math.floor(Math.random() * selectedDice) + 1);
+      }
+
+      const total = results.reduce((a, b) => a + b, 0);
+      const roll = {
+        dice: `d${selectedDice}`,
+        count: numRolls,
+        results,
+        total,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      rolls.unshift(roll);
+      if (rolls.length > 50) rolls.pop();
+
+      saveRolls();
+      renderRolls();
+    }
+
+    function renderRolls() {
+      if (rolls.length === 0) {
+        resultsContainer.innerHTML = '<div class="empty-state">Roll the dice to begin...</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = rolls.map((roll, index) => `
+        <div class="roll-result">
+          <div class="roll-result__header">
+            <span class="roll-result__title">${roll.count}× ${roll.dice}</span>
+            <span class="roll-result__time">${roll.timestamp}</span>
+          </div>
+          <div class="roll-result__values">
+            ${roll.results.map((val) => `<span class="roll-value">${val}</span>`).join('')}
+          </div>
+          <div class="roll-result__total">Total: ${roll.total}</div>
+        </div>
+      `).join('') + '<div class="results-footer"><span>' + rolls.length + ' roll' + (rolls.length !== 1 ? 's' : '') + ' recorded</span></div>';
+    }
+
+    function saveRolls() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rolls));
+    }
+
+    function loadRolls() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          rolls = JSON.parse(saved);
+        } catch (e) {
+          rolls = [];
+        }
+      }
+      renderRolls();
+    }
+
+    rollBtn.addEventListener('click', rollDice);
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear all roll history?')) {
+        rolls = [];
+        saveRolls();
+        renderRolls();
+      }
+    });
+
+    rollCountInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') rollDice();
+    });
+
+    // Keyboard support for dice selection
+    document.addEventListener('keydown', (e) => {
+      const keyMap = {
+        '4': 4,
+        '6': 6,
+        '8': 8,
+        '0': 10,
+        '2': 12,
+        '1': 20,
+        '%': 100,
+      };
+      if (keyMap[e.key] && !e.ctrlKey && !e.metaKey) {
+        selectedDice = keyMap[e.key];
+        document.querySelectorAll('.dice-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.textContent === `d${selectedDice}`);
+        });
+      }
+      if (e.key === 'Enter' && e.target === rollCountInput) {
+        rollDice();
+      }
+    });
+
+    // Initialize
+    loadRolls();
+  </script>
+</body>
+</html>
