@@ -34,7 +34,6 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      cursor: pointer;
     }
 
     .path-display {
@@ -48,34 +47,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .header-actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .mount-btn {
-        background: var(--moss);
-        color: var(--cream);
-        border: none;
-        padding: 6px 12px;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-family: var(--font-ui);
-        transition: background 0.2s;
-    }
-
-    .mount-btn:hover {
-        background: var(--bark);
-    }
-
-    .mount-btn:disabled {
-        background: var(--fog);
-        color: var(--soil);
-        cursor: not-allowed;
     }
 
     .file-container {
@@ -159,240 +130,170 @@
 </head>
 <body>
   <header>
-    <h1 id="back-btn">📂 File Grove</h1>
+    <h1>📂 File Grove</h1>
     <div class="path-display" id="path-display">No Mount</div>
-    <div class="header-actions">
-        <button id="mount-btn" class="mount-btn">📂 Mount Folder</button>
-    </div>
   </header>
 
   <div class="file-container" id="file-list">
     <div class="loading-state">Waiting for folder mount...</div>
   </div>
 
-  <script type="module">
-    import { mountFolder, isAPIAvailable } from './filesystem-manager.js';
-
-    const fileList = document.getElementById('file-list');
+  <script>
+    const fileList    = document.getElementById('file-list');
     const pathDisplay = document.getElementById('path-display');
-    const mountBtn = document.getElementById('mount-btn');
-    const backBtn = document.getElementById('back-btn');
 
-    // State
-    let currentDirHandle = null;
-    let currentPathParts = []; // Array of names to reconstruct path visually
-    const pathToHandleMap = new Map();
+    // ─── State ────────────────────────────────────────────────────────────────
+    let rootHandle      = null;              // handle of the mounted root folder
+    let currentDirHandle = null;             // handle of the currently displayed folder
+    let currentPathParts = [];               // breadcrumb segments below root
 
-    // Check API availability on load
-    if (!isAPIAvailable()) {
-      mountBtn.disabled = true;
-      mountBtn.title = "File System Access API not supported in this browser";
-      fileList.innerHTML = '<div class="empty-state">Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera.</div>';
-    }
+    /**
+     * History stack for back-navigation.
+     * Each entry: { handle: FileSystemDirectoryHandle, pathParts: string[] }
+     */
+    const navHistory = [];
 
-    // Helper to determine icon based on extension or type
-    function getIcon(name, type) {
-      if (type === 'directory') return '📁';
+    // ─── Icon helper ──────────────────────────────────────────────────────────
+    function getIcon(name, kind) {
+      if (kind === 'directory') return '📁';
       const ext = name.split('.').pop().toLowerCase();
-      const icons = {
-        'js': '📜',
-        'html': '📄',
-        'css': '🎨',
-        'png': '🖼️',
-        'jpg': '🖼️',
-        'json': '📋',
-        'txt': '📝',
-        'md': '📝'
-      };
-      return icons[ext] || '📃';
+      return { js:'📜', ts:'📜', html:'📄', htm:'📄', css:'🎨',
+               png:'🖼️', jpg:'🖼️', jpeg:'🖼️', gif:'🖼️', svg:'🖼️',
+               json:'📋', txt:'📝', md:'📝' }[ext] ?? '📃';
     }
 
-    // Render files from the current DirectoryHandle
+    // ─── Mount a new root ─────────────────────────────────────────────────────
+    function mountRoot(handle) {
+      rootHandle       = handle;
+      currentDirHandle = handle;
+      currentPathParts = [];
+      navHistory.length = 0;
+      pathDisplay.textContent = `/ ${handle.name}`;
+      renderFilesFromHandle(handle);
+    }
+
+    // ─── Unmount ──────────────────────────────────────────────────────────────
+    function unmountRoot() {
+      rootHandle        = null;
+      currentDirHandle  = null;
+      currentPathParts  = [];
+      navHistory.length = 0;
+      pathDisplay.textContent = 'No Mount';
+      fileList.innerHTML = '<div class="empty-state">No folder mounted.</div>';
+    }
+
+    // ─── Render directory contents ────────────────────────────────────────────
     async function renderFilesFromHandle(dirHandle) {
       fileList.innerHTML = '<div class="loading-state">Loading...</div>';
-      
+
       try {
         const items = [];
-        
-        // Use the File System Access API to list entries
-        for await (const entry of dirHandle.entries()) {
-          const [name, handle] = entry;
-          items.push({
-            name,
-            type: handle.kind, // 'file' or 'directory'
-            handle: handle
-          });
+        for await (const [name, handle] of dirHandle.entries()) {
+          items.push({ name, kind: handle.kind, handle });
         }
 
-        // Sort: Folders first, then files, alphabetically
-        const sortedItems = items.sort((a, b) => {
-          if (a.type === 'directory' && b.type !== 'directory') return -1;
-          if (a.type !== 'directory' && b.type === 'directory') return 1;
+        items.sort((a, b) => {
+          if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
           return a.name.localeCompare(b.name);
         });
 
         fileList.innerHTML = '';
 
-        if (sortedItems.length === 0) {
+        if (items.length === 0) {
           fileList.innerHTML = '<div class="empty-state">This grove is empty.</div>';
           return;
         }
 
-        sortedItems.forEach(item => {
-          const div = document.createElement('div');
+        for (const item of items) {
+          const div  = document.createElement('div');
           div.className = 'file-item';
-          
-          const icon = document.createElement('div');
-          icon.className = 'file-icon ' + (item.type === 'directory' ? 'folder-icon' : 'file-icon-default');
-          icon.textContent = getIcon(item.name, item.type);
-          
-          const name = document.createElement('div');
-          name.className = 'file-name';
-          name.textContent = item.name;
 
-          div.appendChild(icon);
-          div.appendChild(name);
+          const iconEl  = document.createElement('div');
+          iconEl.className = 'file-icon ' + (item.kind === 'directory' ? 'folder-icon' : 'file-icon-default');
+          iconEl.textContent = getIcon(item.name, item.kind);
 
-          // Click handler
+          const nameEl = document.createElement('div');
+          nameEl.className = 'file-name';
+          nameEl.textContent = item.name;
+
+          div.appendChild(iconEl);
+          div.appendChild(nameEl);
+
           div.addEventListener('click', () => {
-            if (item.type === 'directory') {
-              navigateToDirectory(item.handle, item.name);
+            if (item.kind === 'directory') {
+              navigateInto(item.handle, item.name);
             } else {
-              // Select file
-              // Send message to parent (if in iframe) or handle locally
+              const path = '/' + [...currentPathParts, item.name].join('/');
               window.parent.postMessage({
                 type: 'teatreeos-file-selected',
-                path: currentPathParts.join('/') + '/' + item.name,
+                path,
                 name: item.name,
-                handle: item.handle 
+                handle: item.handle,
               }, '*');
             }
           });
 
           fileList.appendChild(div);
-        });
-
-      } catch (error) {
-        console.error("Error listing directory:", error);
-        fileList.innerHTML = '<div class="empty-state">Error loading files. Permissions might be denied.</div>';
+        }
+      } catch (err) {
+        console.error('Error listing directory:', err);
+        fileList.innerHTML = '<div class="empty-state">Error loading files. Permissions may be denied.</div>';
       }
     }
 
-    // Handle navigation into a subdirectory
-    function navigateToDirectory(newDirHandle, name) {
-      const currentPathStr = currentPathParts.join('/');
-      if (currentPathStr) {
-          pathToHandleMap.set(currentPathStr, currentDirHandle);
-      }
+    // ─── Navigate into a sub-directory ────────────────────────────────────────
+    function navigateInto(newDirHandle, name) {
+      // Push current location onto the history stack before moving
+      navHistory.push({ handle: currentDirHandle, pathParts: [...currentPathParts] });
 
       currentDirHandle = newDirHandle;
       currentPathParts.push(name);
-      
-      // Store the new path in map for back navigation
-      const newFullPathStr = currentPathParts.join('/');
-      pathToHandleMap.set(newFullPathStr, newDirHandle);
-      
-      // Update UI
-      pathDisplay.textContent = '/' + currentPathParts.join('/');
-      
-      // Render new contents
+      pathDisplay.textContent = '/ ' + currentPathParts.join(' / ');
       renderFilesFromHandle(newDirHandle);
     }
 
-    // Handle navigation up (parent directory)
-    function navigateUp() {
-      if (currentPathParts.length === 0) return;
-      
-      const parentPathStr = currentPathParts.slice(0, -1).join('/');
-      const parentHandle = pathToHandleMap.get(parentPathStr);
-      
-      if (parentHandle) {
-          currentPathParts.pop();
-          currentDirHandle = parentHandle;
-          pathDisplay.textContent = currentPathParts.length === 0 ? '/' : '/' + currentPathParts.join('/');
-          renderFilesFromHandle(currentDirHandle);
-      } else {
-          // Fallback: If we can't find the parent in the map, we might be at the root
-          // or the map didn't capture the root.
-          if (currentPathParts.length === 1) {
-              // We are trying to go up from a subdirectory to the root
-              // We need to find the root handle. 
-              // In this simple implementation, we don't store the root handle globally 
-              // unless we get it from the mount event.
-              // Let's check if we have a root handle stored in a variable
-              if (window.rootHandle) {
-                  currentPathParts = [];
-                  currentDirHandle = window.rootHandle;
-                  pathDisplay.textContent = '/';
-                  renderFilesFromHandle(currentDirHandle);
-              } else {
-                  alert("Cannot navigate up further. This is the root of the mounted folder.");
-              }
-          } else {
-              alert("Could not determine parent directory.");
-          }
-      }
+    // ─── Navigate back (one level up) ─────────────────────────────────────────
+    function navigateBack() {
+      if (navHistory.length === 0) return;
+
+      const prev = navHistory.pop();
+      currentDirHandle = prev.handle;
+      currentPathParts = prev.pathParts;
+      pathDisplay.textContent = currentPathParts.length === 0
+        ? `/ ${rootHandle?.name ?? ''}`
+        : '/ ' + currentPathParts.join(' / ');
+      renderFilesFromHandle(currentDirHandle);
     }
 
-    // Mount Folder Button Logic
-    mountBtn.addEventListener('click', async () => {
-        try {
-            const dirHandle = await mountFolder();
-            if (dirHandle) {
-                // Reset state
-                currentDirHandle = dirHandle;
-                currentPathParts = [];
-                pathToHandleMap.clear();
-                pathToHandleMap.set('', dirHandle); // Store root with empty key
-                
-                // Store root handle globally for "back to root" fallback
-                window.rootHandle = dirHandle;
+    // ─── Back on header click ─────────────────────────────────────────────────
+    document.querySelector('header h1').addEventListener('click', navigateBack);
 
-                // Update UI
-                pathDisplay.textContent = '/';
-                
-                // Render contents
-                renderFilesFromHandle(dirHandle);
-                
-                // Notify parent (if this is an iframe)
-                window.parent.postMessage({
-                    type: 'teatreeos-mount-folder',
-                    handle: dirHandle,
-                    path: '/'
-                }, '*');
-            }
-        } catch (err) {
-            console.error("Mount failed:", err);
-            if (err.message !== 'Folder selection cancelled') {
-                alert("Failed to mount folder: " + err.message);
-            }
-        }
-    });
-
-    // Back Button Logic (Clicking the title)
-    backBtn.addEventListener('click', () => {
-        navigateUp();
-    });
-
-    // Listen for messages from parent (for iframe usage)
+    // ─── Listen for postMessage from parent (direct iframe use) ───────────────
     window.addEventListener('message', (event) => {
-      // 1. Handle Mounting from Parent
-      if (event.data?.type === 'teatreeos-mount-folder') {
-        const handle = event.data.handle;
-        if (handle && handle.kind === 'directory') {
-          window.rootHandle = handle; // Store for "back to root"
-          currentDirHandle = handle;
-          currentPathParts = [];
-          pathToHandleMap.clear();
-          pathToHandleMap.set('', handle);
-          pathDisplay.textContent = '/';
-          renderFilesFromHandle(handle);
-        }
+      const { type, handle, name } = event.data ?? {};
+
+      if (type === 'teatreeos-mount-folder' && handle?.kind === 'directory') {
+        mountRoot(handle);
+      }
+      if (type === 'teatreeos-unmount-folder') {
+        unmountRoot();
       }
     });
 
-    // Initial state
-    pathDisplay.textContent = '/';
+    // ─── Listen for BroadcastChannel events (same-origin, any context) ────────
+    // This fires automatically whenever filesystem-manager.js calls mountFolder()
+    // or removeMountedFolder(), with no parent-page wiring required.
+    const fsChannel = new BroadcastChannel('teatreeos-fs');
+    fsChannel.addEventListener('message', (event) => {
+      const { type, handle, name } = event.data ?? {};
+
+      if (type === 'teatreeos-mount-folder' && handle?.kind === 'directory') {
+        mountRoot(handle);
+      }
+      if (type === 'teatreeos-unmount-folder') {
+        unmountRoot();
+      }
+    });
   </script>
 </body>
 </html>
