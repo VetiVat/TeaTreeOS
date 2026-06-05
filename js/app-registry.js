@@ -35,6 +35,15 @@ export const APPS = [
     defaultSize: { width: 400, height: 420 },
     defaultPosition: { x: 200, y: 70 },
   },
+  {
+    id: 'dice',
+    name: 'Dice Roller',
+    icon: '🎲',
+    path: 'apps/dice.html',
+    desktop: true,
+    defaultSize: { width: 420, height: 500 },
+    defaultPosition: { x: 240, y: 90 },
+  },
 ];
 
 export function getApp(id) {
