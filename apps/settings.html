@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canopy Settings</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      overflow-y: auto;
+      padding: 16px;
+      color: var(--text-dark);
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      color: var(--bark);
+      margin-bottom: 16px;
+    }
+
+    section {
+      margin-bottom: 20px;
+    }
+
+    section h2 {
+      font-size: 0.85rem;
+      color: var(--soil);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .wallpapers {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .wallpaper-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .wallpaper-option input {
+      display: none;
+    }
+
+    .wallpaper-swatch {
+      width: 72px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      border: 2px solid transparent;
+      transition: border-color var(--transition-fast);
+    }
+
+    .wallpaper-option input:checked + .wallpaper-swatch {
+      border-color: var(--moss);
+      box-shadow: 0 0 0 2px rgba(74, 124, 89, 0.3);
+    }
+
+    .swatch-mist {
+      background: linear-gradient(180deg, #e8ebe4, #dde3d8);
+    }
+
+    .swatch-forest {
+      background: linear-gradient(180deg, #c8d4c0, #a8b89a);
+    }
+
+    .swatch-bark {
+      background: linear-gradient(180deg, #e0d6c8, #c4b4a0);
+    }
+
+    .wallpaper-option span {
+      font-size: 0.75rem;
+      color: var(--bark);
+    }
+
+    .about {
+      padding: 12px;
+      background: var(--fog);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text-dark);
+    }
+
+    .about strong {
+      color: var(--moss);
+    }
+  </style>
+</head>
+<body>
+  <h1>🌳 Canopy Settings</h1>
+
+  <section>
+    <h2>Desktop Grove</h2>
+    <div class="wallpapers">
+      <label class="wallpaper-option">
+        <input type="radio" name="wallpaper" value="mist">
+        <div class="wallpaper-swatch swatch-mist"></div>
+        <span>Morning Mist</span>
+      </label>
+      <label class="wallpaper-option">
+        <input type="radio" name="wallpaper" value="forest">
+        <div class="wallpaper-swatch swatch-forest"></div>
+        <span>Deep Forest</span>
+      </label>
+      <label class="wallpaper-option">
+        <input type="radio" name="wallpaper" value="bark">
+        <div class="wallpaper-swatch swatch-bark"></div>
+        <span>Weathered Bark</span>
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>About</h2>
+    <div class="about">
+      <p><strong>TeaTreeOS</strong> is a nature-inspired desktop environment that grows inside your browser.</p>
+      <p style="margin-top:8px">Plant new apps by adding files to the <code>apps/</code> folder and registering them in <code>app-registry.js</code>.</p>
+    </div>
+  </section>
+
+  <script>
+    const radios = document.querySelectorAll('input[name="wallpaper"]');
+
+    function applyWallpaper(value) {
+      window.parent.postMessage({ type: 'teatreeos-settings', wallpaper: value }, '*');
+    }
+
+    radios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) applyWallpaper(radio.value);
+      });
+    });
+
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'teatreeos-settings-state') {
+        const radio = document.querySelector(`input[value="${event.data.wallpaper}"]`);
+        if (radio) radio.checked = true;
+      }
+    });
+
+    window.parent.postMessage({ type: 'teatreeos-get-settings' }, '*');
+  </script>
+</body>
+</html>

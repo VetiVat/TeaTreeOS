@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seed Counter</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .display {
+      background: var(--peat);
+      color: var(--text-light);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      text-align: right;
+      font-size: 2rem;
+      min-height: 64px;
+      word-break: break-all;
+      border: 2px solid var(--bark);
+    }
+
+    .display__expr {
+      font-size: 0.85rem;
+      color: var(--lichen);
+      min-height: 1.2em;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      flex: 1;
+    }
+
+    .key {
+      padding: 16px;
+      font-size: 1.1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--lichen);
+      background: var(--fog);
+      color: var(--text-dark);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .key:hover { background: var(--mist); }
+    .key:active { transform: scale(0.97); }
+
+    .key--op {
+      background: var(--soil);
+      color: var(--text-light);
+    }
+
+    .key--op:hover { background: var(--bark); }
+
+    .key--eq {
+      background: var(--moss);
+      color: var(--text-light);
+      grid-column: span 2;
+    }
+
+    .key--eq:hover { background: var(--fern); }
+
+    .key--wide { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div class="display">
+    <div class="display__expr" id="expr"></div>
+    <div id="value">0</div>
+  </div>
+  <div class="keys" id="keys"></div>
+
+  <script>
+    const valueEl = document.getElementById('value');
+    const exprEl = document.getElementById('expr');
+    const keysEl = document.getElementById('keys');
+
+    let current = '0';
+    let previous = null;
+    let operator = null;
+    let fresh = true;
+
+    const layout = [
+      ['C', '±', '%', '÷'],
+      ['7', '8', '9', '×'],
+      ['4', '5', '6', '−'],
+      ['1', '2', '3', '+'],
+      ['0', '.', '='],
+    ];
+
+    const opMap = { '÷': '/', '×': '*', '−': '-' };
+
+    layout.flat().forEach((label) => {
+      const btn = document.createElement('button');
+      btn.className = 'key';
+      btn.textContent = label;
+      if (['÷', '×', '−', '+', '%'].includes(label)) btn.classList.add('key--op');
+      if (label === '0') btn.classList.add('key--wide');
+      btn.addEventListener('click', () => press(label));
+      keysEl.appendChild(btn);
+    });
+
+    function updateDisplay() {
+      valueEl.textContent = current;
+      exprEl.textContent = previous !== null && operator
+        ? `${previous} ${operator}`
+        : '';
+    }
+
+    function press(key) {
+      if (key >= '0' && key <= '9') {
+        current = fresh ? key : (current === '0' ? key : current + key);
+        fresh = false;
+      } else if (key === '.') {
+        if (fresh) { current = '0.'; fresh = false; }
+        else if (!current.includes('.')) current += '.';
+      } else if (key === 'C') {
+        current = '0'; previous = null; operator = null; fresh = true;
+      } else if (key === '±') {
+        current = String(-parseFloat(current) || 0);
+      } else if (key === '%') {
+        current = String(parseFloat(current) / 100);
+      } else if (['÷', '×', '−', '+'].includes(key)) {
+        if (previous !== null && operator && !fresh) calculate();
+        previous = current;
+        operator = key;
+        fresh = true;
+      } else if (key === '=') {
+        calculate();
+        operator = null;
+        previous = null;
+        fresh = true;
+      }
+      updateDisplay();
+    }
+
+    function calculate() {
+      if (previous === null || !operator) return;
+      const a = parseFloat(previous);
+      const b = parseFloat(current);
+      const op = opMap[operator] || operator;
+      let result;
+      switch (op) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/': result = b === 0 ? 'Error' : a / b; break;
+        default: return;
+      }
+      current = result === 'Error' ? 'Error' : String(
+        Math.round(result * 1e10) / 1e10
+      );
+      previous = null;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const map = {
+        '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
+        '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+        '.': '.', '+': '+', '-': '−', '*': '×', '/': '÷',
+        'Enter': '=', 'Escape': 'C', '%': '%',
+      };
+      if (map[e.key]) {
+        e.preventDefault();
+        press(map[e.key]);
+      }
+    });
+  </script>
+</body>
+</html>

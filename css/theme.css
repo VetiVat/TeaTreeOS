@@ -1,0 +1,22 @@
+:root {
+  --moss: #4a7c59;
+  --fern: #7ba05b;
+  --bark: #5c4033;
+  --soil: #8b7355;
+  --mist: #e8ebe4;
+  --fog: #d4cfc4;
+  --peat: #2d4a3e;
+  --lichen: #a8b5a0;
+  --berry: #8b4a5e;
+  --cream: #f5f3ee;
+  --text-dark: #2a2a24;
+  --text-light: #f5f3ee;
+  --leaf-shadow: rgba(45, 74, 62, 0.25);
+  --taskbar-height: 48px;
+  --titlebar-height: 36px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --font-ui: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}

@@ -1,0 +1,93 @@
+#desktop {
+  position: fixed;
+  inset: 0;
+  bottom: var(--taskbar-height);
+  background: var(--mist);
+  background-image:
+    radial-gradient(ellipse at 20% 80%, rgba(74, 124, 89, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 115, 85, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, var(--mist) 0%, #dde3d8 100%);
+  transition: background var(--transition-normal);
+}
+
+#desktop.wallpaper-forest {
+  background-color: #c8d4c0;
+  background-image:
+    radial-gradient(ellipse at 30% 70%, rgba(45, 74, 62, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 30%, rgba(74, 124, 89, 0.18) 0%, transparent 50%),
+    linear-gradient(180deg, #c8d4c0 0%, #a8b89a 100%);
+}
+
+#desktop.wallpaper-bark {
+  background-color: #d4c8b8;
+  background-image:
+    radial-gradient(ellipse at 50% 100%, rgba(92, 64, 51, 0.15) 0%, transparent 60%),
+    linear-gradient(180deg, #e0d6c8 0%, #c4b4a0 100%);
+}
+
+#desktop.wallpaper-mist {
+  background-color: var(--mist);
+  background-image:
+    radial-gradient(ellipse at 20% 80%, rgba(74, 124, 89, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 115, 85, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, var(--mist) 0%, #dde3d8 100%);
+}
+
+.desktop-icons {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 16px;
+  height: 100%;
+  max-width: 120px;
+}
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 88px;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.desktop-icon:hover {
+  background: rgba(74, 124, 89, 0.15);
+}
+
+.desktop-icon:active,
+.desktop-icon.selected {
+  background: rgba(74, 124, 89, 0.25);
+}
+
+.desktop-icon__glyph {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px var(--leaf-shadow));
+}
+
+.desktop-icon__label {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  text-align: center;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  word-break: break-word;
+}
+
+#windows {
+  position: fixed;
+  inset: 0;
+  bottom: var(--taskbar-height);
+  pointer-events: none;
+}
+
+#windows .window {
+  pointer-events: auto;
+}

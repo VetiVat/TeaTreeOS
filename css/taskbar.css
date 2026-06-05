@@ -1,0 +1,137 @@
+#taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--taskbar-height);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  background: var(--fog);
+  border-top: 1px solid var(--lichen);
+  box-shadow: 0 -2px 8px var(--leaf-shadow);
+  z-index: 10000;
+  font-family: var(--font-ui);
+}
+
+.taskbar-root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--moss);
+  color: var(--text-light);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background var(--transition-fast);
+}
+
+.taskbar-root:hover {
+  background: var(--fern);
+}
+
+.taskbar-root__icon {
+  font-size: 1rem;
+}
+
+.taskbar-windows {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.taskbar-window-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background var(--transition-fast);
+}
+
+.taskbar-window-btn:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.taskbar-window-btn.active {
+  background: var(--cream);
+  box-shadow: inset 0 0 0 1px var(--moss);
+}
+
+.taskbar-window-btn.minimized {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+.taskbar-clock {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--bark);
+  white-space: nowrap;
+}
+
+#start-menu {
+  position: fixed;
+  bottom: var(--taskbar-height);
+  left: 8px;
+  width: 260px;
+  max-height: 400px;
+  background: var(--cream);
+  border: 1px solid var(--lichen);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: 0 -4px 16px var(--leaf-shadow);
+  z-index: 10001;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-ui);
+}
+
+#start-menu.open {
+  display: flex;
+}
+
+.start-menu__header {
+  padding: 12px 16px;
+  background: var(--moss);
+  color: var(--text-light);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.start-menu__apps {
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.start-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+  transition: background var(--transition-fast);
+}
+
+.start-menu__item:hover {
+  background: rgba(74, 124, 89, 0.12);
+}
+
+.start-menu__item-icon {
+  font-size: 1.25rem;
+}

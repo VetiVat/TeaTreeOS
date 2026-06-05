@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeaTreeOS</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/desktop.css">
+  <link rel="stylesheet" href="css/taskbar.css">
+  <link rel="stylesheet" href="css/windows.css">
+  <style>
+    #boot {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: var(--peat);
+      color: var(--text-light);
+      font-family: var(--font-ui);
+      z-index: 20000;
+      transition: opacity var(--transition-normal);
+    }
+
+    #boot.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #boot.removed {
+      display: none;
+    }
+
+    .boot-logo {
+      font-size: 3rem;
+    }
+
+    .boot-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .boot-tagline {
+      font-size: 0.95rem;
+      color: var(--lichen);
+      font-style: italic;
+    }
+
+    .boot-progress {
+      width: 200px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .boot-progress__bar {
+      height: 100%;
+      width: 0%;
+      background: var(--fern);
+      border-radius: 2px;
+      animation: boot-grow 1.2s ease forwards;
+    }
+
+    @keyframes boot-grow {
+      to { width: 100%; }
+    }
+
+    #os-shell {
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+    }
+
+    #os-shell.visible {
+      opacity: 1;
+    }
+
+    .viewport-warning {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--peat);
+      color: var(--text-light);
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      font-family: var(--font-ui);
+      z-index: 30000;
+    }
+
+    @media (max-width: 639px) {
+      .viewport-warning {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="viewport-warning">
+    <p>TeaTreeOS needs a wider viewport.<br>Please use a desktop-sized window (640px+).</p>
+  </div>
+
+  <div id="boot" aria-live="polite">
+    <div class="boot-logo">🌿</div>
+    <div class="boot-title">TeaTreeOS</div>
+    <div class="boot-tagline">growing your workspace...</div>
+    <div class="boot-progress"><div class="boot-progress__bar"></div></div>
+  </div>
+
+  <div id="os-shell">
+    <div id="desktop" class="wallpaper-mist">
+      <div class="desktop-icons" id="desktop-icons"></div>
+    </div>
+
+    <div id="windows"></div>
+
+    <nav id="taskbar">
+      <button class="taskbar-root" id="taskbar-root" type="button" aria-expanded="false" aria-controls="start-menu">
+        <span class="taskbar-root__icon">🌱</span>
+        <span>Root</span>
+      </button>
+      <div class="taskbar-windows" id="taskbar-windows"></div>
+      <time class="taskbar-clock" id="taskbar-clock"></time>
+    </nav>
+
+    <div id="start-menu" role="menu" aria-label="Start menu">
+      <div class="start-menu__header">TeaTreeOS</div>
+      <div class="start-menu__apps" id="start-menu-apps"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

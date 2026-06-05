@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bark Notes</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--cream);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 8px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toolbar h1 {
+      font-size: 0.9rem;
+      color: var(--bark);
+      font-weight: 600;
+    }
+
+    .toolbar button {
+      padding: 6px 12px;
+      background: var(--fog);
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-sm);
+      color: var(--bark);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .toolbar button:hover {
+      background: var(--mist);
+    }
+
+    .status {
+      font-size: 0.75rem;
+      color: var(--soil);
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--lichen);
+      border-radius: var(--radius-md);
+      background: #faf9f6;
+      color: var(--text-dark);
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      resize: none;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--moss);
+      box-shadow: 0 0 0 2px rgba(74, 124, 89, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>🌿 Bark Notes</h1>
+    <button type="button" id="clear-btn">Clear grove</button>
+  </div>
+  <textarea id="editor" placeholder="Plant your thoughts here..."></textarea>
+  <div class="status" id="status">Ready</div>
+
+  <script>
+    const STORAGE_KEY = 'teatreeos-notes';
+    const editor = document.getElementById('editor');
+    const status = document.getElementById('status');
+    const clearBtn = document.getElementById('clear-btn');
+
+    editor.value = localStorage.getItem(STORAGE_KEY) || '';
+
+    let saveTimer;
+    editor.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      status.textContent = 'Saving...';
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, editor.value);
+        status.textContent = 'Saved to bark';
+      }, 400);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear all notes from the grove?')) {
+        editor.value = '';
+        localStorage.removeItem(STORAGE_KEY);
+        status.textContent = 'Grove cleared';
+      }
+    });
+  </script>
+</body>
+</html>
