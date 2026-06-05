@@ -1,3 +1,5 @@
+--- START OF FILE text/html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,114 +134,6 @@
     .about strong {
       color: var(--moss);
     }
-
-    .unsupported-warning {
-      padding: 12px;
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      border-radius: var(--radius-sm);
-      color: #856404;
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
-
-    .mounted-folders {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .mount-button {
-      padding: 10px 16px;
-      background: var(--moss);
-      color: var(--text-light);
-      border: none;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 600;
-      transition: background var(--transition-fast);
-      align-self: flex-start;
-    }
-
-    .mount-button:hover {
-      background: var(--fern);
-    }
-
-    .mount-button:active {
-      transform: scale(0.98);
-    }
-
-    .folder-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .folder-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
-      background: var(--fog);
-      border-radius: var(--radius-sm);
-      border-left: 4px solid var(--moss);
-    }
-
-    .folder-item__name {
-      font-weight: 500;
-      color: var(--bark);
-    }
-
-    .folder-item__size {
-      font-size: 0.8rem;
-      color: var(--soil);
-    }
-
-    .folder-item__remove {
-      padding: 6px 10px;
-      background: var(--soil);
-      color: var(--text-light);
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: background var(--transition-fast);
-    }
-
-    .folder-item__remove:hover {
-      background: var(--bark);
-    }
-
-    .empty-state {
-      padding: 12px;
-      background: var(--fog);
-      border-radius: var(--radius-sm);
-      color: var(--soil);
-      font-style: italic;
-      font-size: 0.9rem;
-      text-align: center;
-    }
-
-    .status-message {
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.9rem;
-      margin-top: 10px;
-    }
-
-    .status-message.success {
-      background: #d4edda;
-      color: #155724;
-      border-left: 4px solid #28a745;
-    }
-
-    .status-message.error {
-      background: #f8d7da;
-      color: #721c24;
-      border-left: 4px solid #f5c6cb;
-    }
   </style>
 </head>
 <body>
@@ -247,7 +141,6 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="appearance" type="button">Appearance</button>
-    <button class="tab-btn" data-tab="storage" type="button">Storage</button>
     <button class="tab-btn" data-tab="about" type="button">About</button>
   </div>
 
@@ -275,27 +168,6 @@
     </section>
   </div>
 
-  <!-- Storage Tab -->
-  <div class="tab-content" id="storage-tab">
-    <section>
-      <h2>Mounted Folders</h2>
-      <div id="storage-content">
-        <div class="unsupported-warning" id="unsupported-msg" style="display: none;">
-          ⚠️ File System Access API is not supported in your browser. This feature requires Chrome 86+, Edge 86+, or Firefox 127+.
-        </div>
-        
-        <div id="storage-available">
-          <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--soil);">
-            Mount folders from your computer to access and manage files directly within TeaTreeOS.
-          </p>
-          <button class="mount-button" id="mount-btn" type="button">📁 Mount Folder</button>
-          <div class="folder-list" id="folder-list"></div>
-          <div class="status-message" id="status-msg" style="display: none;"></div>
-        </div>
-      </div>
-    </section>
-  </div>
-
   <!-- About Tab -->
   <div class="tab-content" id="about-tab">
     <section>
@@ -308,18 +180,8 @@
   </div>
 
   <script type="module">
-    import * as FS from '../js/filesystem-manager.js';
-
-    const appearanceTab = document.getElementById('appearance-tab');
-    const storageTab = document.getElementById('storage-tab');
-    const aboutTab = document.getElementById('about-tab');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const radios = document.querySelectorAll('input[name="wallpaper"]');
-    const mountBtn = document.getElementById('mount-btn');
-    const folderList = document.getElementById('folder-list');
-    const statusMsg = document.getElementById('status-msg');
-    const unsupportedMsg = document.getElementById('unsupported-msg');
-    const storageAvailable = document.getElementById('storage-available');
 
     // Tab switching
     tabButtons.forEach((btn) => {
@@ -351,90 +213,6 @@
     });
 
     window.parent.postMessage({ type: 'teatreeos-get-settings' }, '*');
-
-    // File System API support check
-    function checkAPISupport() {
-      if (!FS.isAPIAvailable()) {
-        unsupportedMsg.style.display = 'block';
-        storageAvailable.style.display = 'none';
-      }
-    }
-
-    // Mount folder
-    async function handleMount() {
-      try {
-        const dirHandle = await FS.mountFolder();
-        const folderName = dirHandle.name;
-        await FS.saveDirectoryHandle(folderName, dirHandle);
-        showStatus(`✓ Mounted "${folderName}"`, 'success');
-        refreshFolderList();
-      } catch (err) {
-        if (err.message !== 'Folder selection cancelled') {
-          showStatus(`✗ Error: ${err.message}`, 'error');
-        }
-      }
-    }
-
-    // Refresh folder list
-    async function refreshFolderList() {
-      const folders = await FS.listMountedFolders();
-      
-      if (folders.length === 0) {
-        folderList.innerHTML = '<div class="empty-state">No folders mounted yet</div>';
-        return;
-      }
-
-      folderList.innerHTML = folders.map((folder) => `
-        <div class="folder-item">
-          <div>
-            <div class="folder-item__name">📁 ${folder.name}</div>
-          </div>
-          <button class="folder-item__remove" data-name="${folder.name}" type="button">Remove</button>
-        </div>
-      `).join('');
-
-      // Add remove listeners
-      document.querySelectorAll('.folder-item__remove').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const name = btn.dataset.name;
-          if (confirm(`Remove mounted folder "${name}"?`)) {
-            try {
-              await FS.removeMountedFolder(name);
-            } catch (err) {
-              // Removal may throw but we still want to clean up the UI
-              console.warn(`FS.removeMountedFolder error for "${name}":`, err);
-            }
-
-            // Optimistically remove the item from the DOM immediately
-            const item = btn.closest('.folder-item');
-            if (item) item.remove();
-
-            // If the list is now empty, show the empty state
-            if (folderList.querySelectorAll('.folder-item').length === 0) {
-              folderList.innerHTML = '<div class="empty-state">No folders mounted yet</div>';
-            }
-
-            // Notify the parent OS to remove the drive tab / sidebar entry
-            window.parent.postMessage({ type: 'teatreeos-unmount', folderName: name }, '*');
-
-            showStatus(`✓ Unmounted "${name}"`, 'success');
-          }
-        });
-      });
-    }
-
-    function showStatus(message, type) {
-      statusMsg.textContent = message;
-      statusMsg.className = `status-message ${type}`;
-      statusMsg.style.display = 'block';
-      setTimeout(() => {
-        statusMsg.style.display = 'none';
-      }, 3000);
-    }
-
-    mountBtn.addEventListener('click', handleMount);
-    checkAPISupport();
-    refreshFolderList();
   </script>
 </body>
 </html>
