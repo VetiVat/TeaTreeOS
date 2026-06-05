@@ -35,6 +35,15 @@ export const APPS = [
     defaultSize: { width: 400, height: 420 },
     defaultPosition: { x: 200, y: 70 },
   },
+  {
+    id: 'fates',
+    name: 'Forest Fates',
+    icon: '🌲',
+    path: 'apps/forest-fates.html',
+    desktop: true,
+    defaultSize: { width: 440, height: 540 },
+    defaultPosition: { x: 240, y: 90 },
+  },
 ];
 
 export function getApp(id) {
