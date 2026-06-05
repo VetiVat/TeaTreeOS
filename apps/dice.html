@@ -234,6 +234,8 @@
   <script>
     const STORAGE_KEY = 'teatreeos-dice-rolls';
     const DICE_TYPES = [4, 6, 8, 10, 12, 20, 100];
+    const DEFAULT_DICE = 20;
+    const DEFAULT_ROLLS = 1;
 
     const diceSelector = document.getElementById('dice-selector');
     const rollBtn = document.getElementById('roll-btn');
@@ -241,14 +243,14 @@
     const resultsContainer = document.getElementById('results');
     const rollCountInput = document.getElementById('roll-count');
 
-    let selectedDice = 20;
+    let selectedDice = DEFAULT_DICE;
     let rolls = [];
 
     // Initialize dice buttons
     DICE_TYPES.forEach((sides) => {
       const btn = document.createElement('button');
       btn.className = 'dice-btn';
-      if (sides === 20) btn.classList.add('active');
+      if (sides === DEFAULT_DICE) btn.classList.add('active');
       btn.textContent = `d${sides}`;
       btn.setAttribute('data-cursor', 'link');
       btn.addEventListener('click', () => selectDice(sides));
@@ -327,12 +329,31 @@
       renderRolls();
     }
 
+    function resetApp() {
+      // Clear roll history
+      rolls = [];
+      localStorage.removeItem(STORAGE_KEY);
+      
+      // Reset dice selection to default
+      selectedDice = DEFAULT_DICE;
+      document.querySelectorAll('.dice-btn').forEach((btn) => {
+        btn.classList.remove('active');
+        if (btn.textContent === `d${DEFAULT_DICE}`) {
+          btn.classList.add('active');
+        }
+      });
+      
+      // Reset roll count to default
+      rollCountInput.value = DEFAULT_ROLLS;
+      
+      // Re-render empty state
+      renderRolls();
+    }
+
     rollBtn.addEventListener('click', rollDice);
     clearBtn.addEventListener('click', () => {
-      if (confirm('Clear all roll history?')) {
-        rolls = [];
-        saveRolls();
-        renderRolls();
+      if (confirm('Reset app to defaults and clear all roll history?')) {
+        resetApp();
       }
     });
 
@@ -360,6 +381,12 @@
       if (e.key === 'Enter' && e.target === rollCountInput) {
         rollDice();
       }
+    });
+
+    // Clear app state when window unloads
+    window.addEventListener('beforeunload', () => {
+      rolls = [];
+      localStorage.removeItem(STORAGE_KEY);
     });
 
     // Initialize
