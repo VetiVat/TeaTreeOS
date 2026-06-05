@@ -49,6 +49,7 @@ export const APPS = [
   name: 'File Grove',
   icon: '🌳',
   path: 'apps/file-grove.html',
+  desktop: true,
   defaultSize: { width: 440, height: 540 },
   deafultPosition: { x: 240, y: 90 },
   },
