@@ -34,6 +34,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      cursor: pointer;
     }
 
     .path-display {
@@ -47,6 +48,34 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .mount-btn {
+        background: var(--moss);
+        color: var(--cream);
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-family: var(--font-ui);
+        transition: background 0.2s;
+    }
+
+    .mount-btn:hover {
+        background: var(--bark);
+    }
+
+    .mount-btn:disabled {
+        background: var(--fog);
+        color: var(--soil);
+        cursor: not-allowed;
     }
 
     .file-container {
@@ -130,21 +159,36 @@
 </head>
 <body>
   <header>
-    <h1>📂 File Grove</h1>
+    <h1 id="back-btn">📂 File Grove</h1>
     <div class="path-display" id="path-display">No Mount</div>
+    <div class="header-actions">
+        <button id="mount-btn" class="mount-btn">📂 Mount Folder</button>
+    </div>
   </header>
 
   <div class="file-container" id="file-list">
     <div class="loading-state">Waiting for folder mount...</div>
   </div>
 
-  <script>
+  <script type="module">
+    import { mountFolder, isAPIAvailable } from './filesystem-manager.js';
+
     const fileList = document.getElementById('file-list');
     const pathDisplay = document.getElementById('path-display');
-    
+    const mountBtn = document.getElementById('mount-btn');
+    const backBtn = document.getElementById('back-btn');
+
     // State
     let currentDirHandle = null;
     let currentPathParts = []; // Array of names to reconstruct path visually
+    const pathToHandleMap = new Map();
+
+    // Check API availability on load
+    if (!isAPIAvailable()) {
+      mountBtn.disabled = true;
+      mountBtn.title = "File System Access API not supported in this browser";
+      fileList.innerHTML = '<div class="empty-state">Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera.</div>';
+    }
 
     // Helper to determine icon based on extension or type
     function getIcon(name, type) {
@@ -215,11 +259,12 @@
               navigateToDirectory(item.handle, item.name);
             } else {
               // Select file
+              // Send message to parent (if in iframe) or handle locally
               window.parent.postMessage({
                 type: 'teatreeos-file-selected',
                 path: currentPathParts.join('/') + '/' + item.name,
                 name: item.name,
-                handle: item.handle // Pass handle if parent needs to read it
+                handle: item.handle 
               }, '*');
             }
           });
@@ -235,8 +280,17 @@
 
     // Handle navigation into a subdirectory
     function navigateToDirectory(newDirHandle, name) {
+      const currentPathStr = currentPathParts.join('/');
+      if (currentPathStr) {
+          pathToHandleMap.set(currentPathStr, currentDirHandle);
+      }
+
       currentDirHandle = newDirHandle;
       currentPathParts.push(name);
+      
+      // Store the new path in map for back navigation
+      const newFullPathStr = currentPathParts.join('/');
+      pathToHandleMap.set(newFullPathStr, newDirHandle);
       
       // Update UI
       pathDisplay.textContent = '/' + currentPathParts.join('/');
@@ -249,108 +303,92 @@
     function navigateUp() {
       if (currentPathParts.length === 0) return;
       
-      currentPathParts.pop();
+      const parentPathStr = currentPathParts.slice(0, -1).join('/');
+      const parentHandle = pathToHandleMap.get(parentPathStr);
       
-      if (currentPathParts.length === 0) {
-        // Back to root mount
-        // We need to get the root handle again. 
-        // Note: In a real app, you might want to cache the root handle separately.
-        // For now, we assume the parent re-sends the root handle if we go back to root,
-        // OR we store the root handle in a variable.
-        
-        // Let's assume we stored the root handle in a variable 'rootHandle'
-        if (window.rootHandle) {
-            currentDirHandle = window.rootHandle;
-            pathDisplay.textContent = '/';
-            renderFilesFromHandle(currentDirHandle);
-        } else {
-            pathDisplay.textContent = 'No Mount';
-            fileList.innerHTML = '<div class="empty-state">No folder mounted.</div>';
-            currentDirHandle = null;
-        }
+      if (parentHandle) {
+          currentPathParts.pop();
+          currentDirHandle = parentHandle;
+          pathDisplay.textContent = currentPathParts.length === 0 ? '/' : '/' + currentPathParts.join('/');
+          renderFilesFromHandle(currentDirHandle);
       } else {
-        // Reconstruct path to get parent handle
-        // This is tricky without a map of paths to handles.
-        // A simpler approach for this specific "plug-and-play" requirement:
-        // We will rely on the parent to send the handle for the specific path requested,
-        // OR we traverse up. Traversing up requires keeping a map of handles.
-        
-        // For this simplified version, let's just re-request the parent directory from the parent.
-        // But wait, the parent doesn't know our current relative path easily.
-        
-        // BETTER APPROACH: Store the root handle and traverse up using the API.
-        // However, DirectoryHandle doesn't have a "getParent" method.
-        
-        // WORKAROUND: We will assume the parent sends the handle for the ROOT when we start.
-        // To move up, we need to know the parent's handle. 
-        // Since we can't easily get parent handles from a child handle, 
-        // we will change the navigation strategy:
-        // 1. Parent sends { type: 'teatreeos-mount', handle: rootHandle }
-        // 2. We store rootHandle.
-        // 3. When entering a dir, we store it in a Map: pathString -> handle.
-        
-        // Let's implement the Map approach in the message listener below.
+          // Fallback: If we can't find the parent in the map, we might be at the root
+          // or the map didn't capture the root.
+          if (currentPathParts.length === 1) {
+              // We are trying to go up from a subdirectory to the root
+              // We need to find the root handle. 
+              // In this simple implementation, we don't store the root handle globally 
+              // unless we get it from the mount event.
+              // Let's check if we have a root handle stored in a variable
+              if (window.rootHandle) {
+                  currentPathParts = [];
+                  currentDirHandle = window.rootHandle;
+                  pathDisplay.textContent = '/';
+                  renderFilesFromHandle(currentDirHandle);
+              } else {
+                  alert("Cannot navigate up further. This is the root of the mounted folder.");
+              }
+          } else {
+              alert("Could not determine parent directory.");
+          }
       }
     }
 
-    // Listen for messages from parent
+    // Mount Folder Button Logic
+    mountBtn.addEventListener('click', async () => {
+        try {
+            const dirHandle = await mountFolder();
+            if (dirHandle) {
+                // Reset state
+                currentDirHandle = dirHandle;
+                currentPathParts = [];
+                pathToHandleMap.clear();
+                pathToHandleMap.set('', dirHandle); // Store root with empty key
+                
+                // Store root handle globally for "back to root" fallback
+                window.rootHandle = dirHandle;
+
+                // Update UI
+                pathDisplay.textContent = '/';
+                
+                // Render contents
+                renderFilesFromHandle(dirHandle);
+                
+                // Notify parent (if this is an iframe)
+                window.parent.postMessage({
+                    type: 'teatreeos-mount-folder',
+                    handle: dirHandle,
+                    path: '/'
+                }, '*');
+            }
+        } catch (err) {
+            console.error("Mount failed:", err);
+            if (err.message !== 'Folder selection cancelled') {
+                alert("Failed to mount folder: " + err.message);
+            }
+        }
+    });
+
+    // Back Button Logic (Clicking the title)
+    backBtn.addEventListener('click', () => {
+        navigateUp();
+    });
+
+    // Listen for messages from parent (for iframe usage)
     window.addEventListener('message', (event) => {
-      // 1. Handle Mounting
+      // 1. Handle Mounting from Parent
       if (event.data?.type === 'teatreeos-mount-folder') {
         const handle = event.data.handle;
         if (handle && handle.kind === 'directory') {
           window.rootHandle = handle; // Store for "back to root"
           currentDirHandle = handle;
           currentPathParts = [];
+          pathToHandleMap.clear();
+          pathToHandleMap.set('', handle);
           pathDisplay.textContent = '/';
           renderFilesFromHandle(handle);
         }
       }
-
-      // 2. Handle Request for Parent Directory (if we go up)
-      // We can implement a "go to path" request if the parent manages the map,
-      // or we can ask the parent for the handle of a specific relative path.
-      if (event.data?.type === 'teatreeos-request-parent') {
-         // This would require the parent to know the path. 
-         // Instead, let's just handle the "Back" button logic here if needed,
-         // but for now, let's stick to the forward navigation.
-      }
-    });
-
-    // Add a "Back" button functionality if needed, but for now, 
-    // we rely on the user mounting the correct folder or the parent managing deep links.
-    // To make "Back" work, we need to store the history of handles.
-    
-    // Let's enhance the navigation to support "Back" by storing path->handle map
-    const pathToHandleMap = new Map();
-
-    // Override navigateToDirectory to store history
-    const originalNavigate = navigateToDirectory;
-    navigateToDirectory = function(newDirHandle, name) {
-      const newPathStr = currentPathParts.join('/');
-      pathToHandleMap.set(newPathStr, currentDirHandle); // Store current as parent
-      
-      originalNavigate(newDirHandle, name);
-      
-      // Also store the new path
-      const newFullPathStr = currentPathParts.join('/');
-      pathToHandleMap.set(newFullPathStr, newDirHandle);
-    };
-
-    // Add a way to go back (e.g., double click header or specific key)
-    // For simplicity, we'll add a simple "Back" logic if user clicks header
-    document.querySelector('header h1').addEventListener('click', () => {
-        if (currentPathParts.length > 0) {
-            const parentPathStr = currentPathParts.slice(0, -1).join('/');
-            const parentHandle = pathToHandleMap.get(parentPathStr);
-            
-            if (parentHandle) {
-                currentPathParts.pop();
-                currentDirHandle = parentHandle;
-                pathDisplay.textContent = currentPathParts.length === 0 ? '/' : '/' + currentPathParts.join('/');
-                renderFilesFromHandle(currentHandle);
-            }
-        }
     });
 
     // Initial state
