@@ -245,6 +245,7 @@
 
     let selectedDice = DEFAULT_DICE;
     let rolls = [];
+    let diceBtns = {};
 
     // Initialize dice buttons
     DICE_TYPES.forEach((sides) => {
@@ -253,16 +254,20 @@
       if (sides === DEFAULT_DICE) btn.classList.add('active');
       btn.textContent = `d${sides}`;
       btn.setAttribute('data-cursor', 'link');
-      btn.addEventListener('click', () => selectDice(sides));
+      btn.setAttribute('data-sides', sides);
+      btn.addEventListener('click', (e) => selectDice(sides, btn));
+      diceBtns[sides] = btn;
       diceSelector.appendChild(btn);
     });
 
-    function selectDice(sides) {
+    function selectDice(sides, btn) {
       selectedDice = sides;
-      document.querySelectorAll('.dice-btn').forEach((btn) => {
-        btn.classList.remove('active');
+      // Remove active from all buttons
+      Object.values(diceBtns).forEach((button) => {
+        button.classList.remove('active');
       });
-      event.target.classList.add('active');
+      // Add active to the clicked button
+      btn.classList.add('active');
     }
 
     function rollDice() {
@@ -330,18 +335,16 @@
     }
 
     function resetApp() {
-      // Clear roll history
+      // Clear roll history and localStorage
       rolls = [];
       localStorage.removeItem(STORAGE_KEY);
       
       // Reset dice selection to default
       selectedDice = DEFAULT_DICE;
-      document.querySelectorAll('.dice-btn').forEach((btn) => {
+      Object.values(diceBtns).forEach((btn) => {
         btn.classList.remove('active');
-        if (btn.textContent === `d${DEFAULT_DICE}`) {
-          btn.classList.add('active');
-        }
       });
+      diceBtns[DEFAULT_DICE].classList.add('active');
       
       // Reset roll count to default
       rollCountInput.value = DEFAULT_ROLLS;
@@ -351,6 +354,7 @@
     }
 
     rollBtn.addEventListener('click', rollDice);
+    
     clearBtn.addEventListener('click', () => {
       if (confirm('Reset app to defaults and clear all roll history?')) {
         resetApp();
@@ -373,19 +377,16 @@
         '%': 100,
       };
       if (keyMap[e.key] && !e.ctrlKey && !e.metaKey) {
-        selectedDice = keyMap[e.key];
-        document.querySelectorAll('.dice-btn').forEach((btn) => {
-          btn.classList.toggle('active', btn.textContent === `d${selectedDice}`);
-        });
+        const sides = keyMap[e.key];
+        selectDice(sides, diceBtns[sides]);
       }
       if (e.key === 'Enter' && e.target === rollCountInput) {
         rollDice();
       }
     });
 
-    // Clear app state when window unloads
-    window.addEventListener('beforeunload', () => {
-      rolls = [];
+    // Clear app state when page is about to unload
+    window.addEventListener('unload', () => {
       localStorage.removeItem(STORAGE_KEY);
     });
 
