@@ -398,9 +398,26 @@
         btn.addEventListener('click', async () => {
           const name = btn.dataset.name;
           if (confirm(`Remove mounted folder "${name}"?`)) {
-            await FS.removeMountedFolder(name);
+            try {
+              await FS.removeMountedFolder(name);
+            } catch (err) {
+              // Removal may throw but we still want to clean up the UI
+              console.warn(`FS.removeMountedFolder error for "${name}":`, err);
+            }
+
+            // Optimistically remove the item from the DOM immediately
+            const item = btn.closest('.folder-item');
+            if (item) item.remove();
+
+            // If the list is now empty, show the empty state
+            if (folderList.querySelectorAll('.folder-item').length === 0) {
+              folderList.innerHTML = '<div class="empty-state">No folders mounted yet</div>';
+            }
+
+            // Notify the parent OS to remove the drive tab / sidebar entry
+            window.parent.postMessage({ type: 'teatreeos-unmount', folderName: name }, '*');
+
             showStatus(`✓ Unmounted "${name}"`, 'success');
-            refreshFolderList();
           }
         });
       });
