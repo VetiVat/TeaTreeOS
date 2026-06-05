@@ -13,7 +13,7 @@
       font-family: var(--font-ui);
       background: var(--cream);
       height: 100vh;
-      overflow: hidden; /* Let the container handle scrolling if needed */
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       color: var(--text-dark);
@@ -104,7 +104,15 @@
       font-style: italic;
     }
 
-    /* Scrollbar styling to match theme */
+    /* Loading State */
+    .loading-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px;
+      color: var(--soil);
+    }
+
+    /* Scrollbar styling */
     .file-container::-webkit-scrollbar {
       width: 8px;
     }
@@ -123,17 +131,20 @@
 <body>
   <header>
     <h1>📂 File Grove</h1>
-    <div class="path-display" id="path-display">/</div>
+    <div class="path-display" id="path-display">No Mount</div>
   </header>
 
   <div class="file-container" id="file-list">
-    <!-- Files will be injected here -->
+    <div class="loading-state">Waiting for folder mount...</div>
   </div>
 
   <script>
     const fileList = document.getElementById('file-list');
     const pathDisplay = document.getElementById('path-display');
-    let currentPath = '/';
+    
+    // State
+    let currentDirHandle = null;
+    let currentPathParts = []; // Array of names to reconstruct path visually
 
     // Helper to determine icon based on extension or type
     function getIcon(name, type) {
@@ -152,75 +163,198 @@
       return icons[ext] || '📃';
     }
 
-    function renderFiles(items) {
-      fileList.innerHTML = '';
-
-      if (!items || items.length === 0) {
-        fileList.innerHTML = '<div class="empty-state">This grove is empty.</div>';
-        return;
-      }
-
-      // Sort: Folders first, then files, alphabetically
-      const sortedItems = [...items].sort((a, b) => {
-        if (a.type === 'directory' && b.type !== 'directory') return -1;
-        if (a.type !== 'directory' && b.type === 'directory') return 1;
-        return a.name.localeCompare(b.name);
-      });
-
-      sortedItems.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
+    // Render files from the current DirectoryHandle
+    async function renderFilesFromHandle(dirHandle) {
+      fileList.innerHTML = '<div class="loading-state">Loading...</div>';
+      
+      try {
+        const items = [];
         
-        const icon = document.createElement('div');
-        icon.className = 'file-icon ' + (item.type === 'directory' ? 'folder-icon' : 'file-icon-default');
-        icon.textContent = getIcon(item.name, item.type);
-        
-        const name = document.createElement('div');
-        name.className = 'file-name';
-        name.textContent = item.name;
+        // Use the File System Access API to list entries
+        for await (const entry of dirHandle.entries()) {
+          const [name, handle] = entry;
+          items.push({
+            name,
+            type: handle.kind, // 'file' or 'directory'
+            handle: handle
+          });
+        }
 
-        div.appendChild(icon);
-        div.appendChild(name);
-
-        // Click handler
-        div.addEventListener('click', () => {
-          if (item.type === 'directory') {
-            // Navigate down
-            const newPath = currentPath === '/' ? `/${item.name}` : `${currentPath}/${item.name}`;
-            currentPath = newPath;
-            window.parent.postMessage({
-              type: 'teatreeos-request-files',
-              path: currentPath
-            }, '*');
-          } else {
-            // Select file (could open it, but we just signal selection for now)
-            window.parent.postMessage({
-              type: 'teatreeos-file-selected',
-              path: `${currentPath}/${item.name}`,
-              name: item.name
-            }, '*');
-          }
+        // Sort: Folders first, then files, alphabetically
+        const sortedItems = items.sort((a, b) => {
+          if (a.type === 'directory' && b.type !== 'directory') return -1;
+          if (a.type !== 'directory' && b.type === 'directory') return 1;
+          return a.name.localeCompare(b.name);
         });
 
-        fileList.appendChild(div);
-      });
+        fileList.innerHTML = '';
+
+        if (sortedItems.length === 0) {
+          fileList.innerHTML = '<div class="empty-state">This grove is empty.</div>';
+          return;
+        }
+
+        sortedItems.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'file-item';
+          
+          const icon = document.createElement('div');
+          icon.className = 'file-icon ' + (item.type === 'directory' ? 'folder-icon' : 'file-icon-default');
+          icon.textContent = getIcon(item.name, item.type);
+          
+          const name = document.createElement('div');
+          name.className = 'file-name';
+          name.textContent = item.name;
+
+          div.appendChild(icon);
+          div.appendChild(name);
+
+          // Click handler
+          div.addEventListener('click', () => {
+            if (item.type === 'directory') {
+              navigateToDirectory(item.handle, item.name);
+            } else {
+              // Select file
+              window.parent.postMessage({
+                type: 'teatreeos-file-selected',
+                path: currentPathParts.join('/') + '/' + item.name,
+                name: item.name,
+                handle: item.handle // Pass handle if parent needs to read it
+              }, '*');
+            }
+          });
+
+          fileList.appendChild(div);
+        });
+
+      } catch (error) {
+        console.error("Error listing directory:", error);
+        fileList.innerHTML = '<div class="empty-state">Error loading files. Permissions might be denied.</div>';
+      }
     }
 
-    // Listen for file list updates from parent
+    // Handle navigation into a subdirectory
+    function navigateToDirectory(newDirHandle, name) {
+      currentDirHandle = newDirHandle;
+      currentPathParts.push(name);
+      
+      // Update UI
+      pathDisplay.textContent = '/' + currentPathParts.join('/');
+      
+      // Render new contents
+      renderFilesFromHandle(newDirHandle);
+    }
+
+    // Handle navigation up (parent directory)
+    function navigateUp() {
+      if (currentPathParts.length === 0) return;
+      
+      currentPathParts.pop();
+      
+      if (currentPathParts.length === 0) {
+        // Back to root mount
+        // We need to get the root handle again. 
+        // Note: In a real app, you might want to cache the root handle separately.
+        // For now, we assume the parent re-sends the root handle if we go back to root,
+        // OR we store the root handle in a variable.
+        
+        // Let's assume we stored the root handle in a variable 'rootHandle'
+        if (window.rootHandle) {
+            currentDirHandle = window.rootHandle;
+            pathDisplay.textContent = '/';
+            renderFilesFromHandle(currentDirHandle);
+        } else {
+            pathDisplay.textContent = 'No Mount';
+            fileList.innerHTML = '<div class="empty-state">No folder mounted.</div>';
+            currentDirHandle = null;
+        }
+      } else {
+        // Reconstruct path to get parent handle
+        // This is tricky without a map of paths to handles.
+        // A simpler approach for this specific "plug-and-play" requirement:
+        // We will rely on the parent to send the handle for the specific path requested,
+        // OR we traverse up. Traversing up requires keeping a map of handles.
+        
+        // For this simplified version, let's just re-request the parent directory from the parent.
+        // But wait, the parent doesn't know our current relative path easily.
+        
+        // BETTER APPROACH: Store the root handle and traverse up using the API.
+        // However, DirectoryHandle doesn't have a "getParent" method.
+        
+        // WORKAROUND: We will assume the parent sends the handle for the ROOT when we start.
+        // To move up, we need to know the parent's handle. 
+        // Since we can't easily get parent handles from a child handle, 
+        // we will change the navigation strategy:
+        // 1. Parent sends { type: 'teatreeos-mount', handle: rootHandle }
+        // 2. We store rootHandle.
+        // 3. When entering a dir, we store it in a Map: pathString -> handle.
+        
+        // Let's implement the Map approach in the message listener below.
+      }
+    }
+
+    // Listen for messages from parent
     window.addEventListener('message', (event) => {
-      if (event.data?.type === 'teatreeos-files-response') {
-        renderFiles(event.data.files);
-        if (event.data.path) {
-          currentPath = event.data.path;
-          pathDisplay.textContent = currentPath;
+      // 1. Handle Mounting
+      if (event.data?.type === 'teatreeos-mount-folder') {
+        const handle = event.data.handle;
+        if (handle && handle.kind === 'directory') {
+          window.rootHandle = handle; // Store for "back to root"
+          currentDirHandle = handle;
+          currentPathParts = [];
+          pathDisplay.textContent = '/';
+          renderFilesFromHandle(handle);
         }
       }
-      // Handle initial request response if needed, or just wait for parent to send files
+
+      // 2. Handle Request for Parent Directory (if we go up)
+      // We can implement a "go to path" request if the parent manages the map,
+      // or we can ask the parent for the handle of a specific relative path.
+      if (event.data?.type === 'teatreeos-request-parent') {
+         // This would require the parent to know the path. 
+         // Instead, let's just handle the "Back" button logic here if needed,
+         // but for now, let's stick to the forward navigation.
+      }
     });
 
-    // Initial load: ask parent for root files
-    window.parent.postMessage({ type: 'teatreeos-request-files', path: '/' }, '*');
+    // Add a "Back" button functionality if needed, but for now, 
+    // we rely on the user mounting the correct folder or the parent managing deep links.
+    // To make "Back" work, we need to store the history of handles.
+    
+    // Let's enhance the navigation to support "Back" by storing path->handle map
+    const pathToHandleMap = new Map();
 
+    // Override navigateToDirectory to store history
+    const originalNavigate = navigateToDirectory;
+    navigateToDirectory = function(newDirHandle, name) {
+      const newPathStr = currentPathParts.join('/');
+      pathToHandleMap.set(newPathStr, currentDirHandle); // Store current as parent
+      
+      originalNavigate(newDirHandle, name);
+      
+      // Also store the new path
+      const newFullPathStr = currentPathParts.join('/');
+      pathToHandleMap.set(newFullPathStr, newDirHandle);
+    };
+
+    // Add a way to go back (e.g., double click header or specific key)
+    // For simplicity, we'll add a simple "Back" logic if user clicks header
+    document.querySelector('header h1').addEventListener('click', () => {
+        if (currentPathParts.length > 0) {
+            const parentPathStr = currentPathParts.slice(0, -1).join('/');
+            const parentHandle = pathToHandleMap.get(parentPathStr);
+            
+            if (parentHandle) {
+                currentPathParts.pop();
+                currentDirHandle = parentHandle;
+                pathDisplay.textContent = currentPathParts.length === 0 ? '/' : '/' + currentPathParts.join('/');
+                renderFilesFromHandle(currentHandle);
+            }
+        }
+    });
+
+    // Initial state
+    pathDisplay.textContent = '/';
   </script>
 </body>
 </html>
