@@ -3,6 +3,27 @@
  * Manages mounted folders and file operations using the File System Access API
  */
 
+export async function readFileAsDataURL(fileHandle) {
+  if (!API_AVAILABLE) throw new Error('File System Access API not available');
+  
+  try {
+    const file = await fileHandle.getFile();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  } catch (err) {
+    console.error('Error reading file:', err);
+    throw err;
+  }
+}
+/**
+ * File System Access API Manager
+ * Manages mounted folders and file operations using the File System Access API
+ */
+
 const STORAGE_KEY = 'teatreeos-fs-handles';
 const API_AVAILABLE = 'showDirectoryPicker' in window;
 
