@@ -1,4 +1,189 @@
-<!DOCTYPE html>
+<script type="module">
+  import * as FS from '../js/filesystem-manager.js';
+
+  // State
+  let currentHandle = null;
+  let pathStack = []; // To keep track of navigation handles
+  let openFileHandle = null;
+
+  const rootsList = document.getElementById('roots-list');
+  const fileGrid = document.getElementById('file-grid');
+  const breadcrumbs = document.getElementById('breadcrumbs');
+  const backBtn = document.getElementById('back-btn');
+  const mountBtn = document.getElementById('mount-btn');
+  
+  const editorOverlay = document.getElementById('editor-overlay');
+  const editorText = document.getElementById('editor-text');
+  const editorFilename = document.getElementById('editor-filename');
+
+  /** 
+   * INITIALIZATION
+   */
+  async function init() {
+    refreshRoots();
+    
+    // Listen for mount/unmount events from Settings or other apps
+    FS.fsChannel.onmessage = (event) => {
+      refreshRoots();
+      if (event.data.type === 'teatreeos-unmount-folder') {
+        // If the folder we are currently viewing is unmounted, clear view
+        if (currentHandle && currentHandle.name === event.data.name) {
+          currentHandle = null;
+          pathStack = [];
+          renderCurrentDirectory();
+        }
+      }
+    };
+  }
+
+  /**
+   * UI RENDERING
+   */
+  async function refreshRoots() {
+    const folders = await FS.listMountedFolders();
+    rootsList.innerHTML = folders.map(f => `
+      <div class="nav-item" data-name="${f.name}">
+        🌳 ${f.name}
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const name = item.dataset.name;
+        const handle = await FS.getDirectoryHandle(name);
+        if (handle) {
+          navigateTo(handle, true);
+        }
+      });
+    });
+  }
+
+  async function navigateTo(handle, isNewRoot = false) {
+    if (isNewRoot) {
+      pathStack = [handle];
+    } else {
+      pathStack.push(handle);
+    }
+    currentHandle = handle;
+    renderCurrentDirectory();
+  }
+
+  async function goBack() {
+    if (pathStack.length > 1) {
+      pathStack.pop();
+      currentHandle = pathStack[pathStack.length - 1];
+      renderCurrentDirectory();
+    }
+  }
+
+  async function renderCurrentDirectory() {
+    if (!currentHandle) {
+      fileGrid.innerHTML = '<div class="empty-state">Select a mounted folder to begin</div>';
+      breadcrumbs.textContent = '/';
+      backBtn.disabled = true;
+      return;
+    }
+
+    backBtn.disabled = pathStack.length <= 1;
+    breadcrumbs.textContent = pathStack.map(h => h.name).join(' / ');
+
+    try {
+      // Request permission if needed (security requirement of the API)
+      const options = { mode: 'readwrite' };
+      if (await currentHandle.queryPermission(options) !== 'granted') {
+        await currentHandle.requestPermission(options);
+      }
+
+      const entries = await FS.listDirectory(currentHandle);
+      
+      if (entries.length === 0) {
+        fileGrid.innerHTML = '<div class="empty-state">This folder is empty</div>';
+        return;
+      }
+
+      fileGrid.innerHTML = '';
+      entries.forEach(entry => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const icon = entry.kind === 'directory' ? '📁' : '📄';
+        
+        item.innerHTML = `
+          <div class="file-icon">${icon}</div>
+          <div class="file-name">${entry.name}</div>
+        `;
+
+        item.addEventListener('click', () => {
+          if (entry.kind === 'directory') {
+            navigateTo(entry.handle);
+          } else {
+            openFile(entry.handle, entry.mimeType);
+          }
+        });
+
+        // Add a simple right-click context menu via native confirm for deletion
+        item.addEventListener('contextmenu', async (e) => {
+          e.preventDefault();
+          if (confirm(`Delete "${entry.name}"?`)) {
+            await currentHandle.removeEntry(entry.name);
+            renderCurrentDirectory();
+          }
+        });
+
+        fileGrid.appendChild(item);
+      });
+    } catch (err) {
+      fileGrid.innerHTML = `<div class="empty-state" style="color: red;">Error: ${err.message}</div>`;
+    }
+  }
+
+  /**
+   * FILE OPERATIONS
+   */
+  async function openFile(handle, mimeType) {
+    if (mimeType.startsWith('image') || mimeType.startsWith('video') || mimeType.startsWith('audio')) {
+      const mediaViewer = WindowManager.open('media-viewer', handle);
+      window.postMessage({ type: 'teatreeos-media-data', fileHandle: handle, mimeType }, '*');
+    } else {
+      openFileHandle = handle;
+      const text = await FS.readFileAsText(handle);
+      editorFilename.textContent = handle.name;
+      editorText.value = text;
+      editorOverlay.style.display = 'block';
+    }
+  }
+
+  async function saveFile() {
+    if (!openFileHandle) return;
+    try {
+      await FS.writeFileAsText(openFileHandle, editorText.value);
+      editorOverlay.style.display = 'none';
+      alert('File saved successfully.');
+    } catch (err) {
+      alert('Could not save: ' + err.message);
+    }
+  }
+
+  /**
+   * EVENTS
+   */
+  mountBtn.addEventListener('click', async () => {
+    try {
+      const handle = await FS.mountFolder();
+      refreshRoots();
+      navigateTo(handle, true);
+    } catch (err) {
+      console.warn(err.message);
+    }
+  });
+
+  backBtn.addEventListener('click', goBack);
+  document.getElementById('editor-close').addEventListener('click', () => {
+    editorOverlay.style.display = 'none';
+  });
+  document.getElementById('editor-save').addEventListener('click', saveFile);
+
+  init();
+</script><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
