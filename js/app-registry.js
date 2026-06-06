@@ -53,8 +53,18 @@ export const APPS = [
   defaultSize: { width: 440, height: 540 },
   deafultPosition: { x: 240, y: 90 },
   },
+  {
+    id: 'media-viewer',
+    name: 'Media Viewer',
+    icon: '🖼️',
+    path: 'apps/media-viewer.html', // This file will be created next
+    desktop: false, // Media viewer is not a desktop app
+    defaultSize: { width: 640, height: 480 },
+    defaultPosition: { x: 100, y: 50 },
+  },
 ];
 
 export function getApp(id) {
   return APPS.find((app) => app.id === id);
 }
+
