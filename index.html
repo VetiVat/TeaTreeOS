@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1134,7 +1134,8 @@ body.loading * {
 // Import Firebase Modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp 
+  getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, 
+  serverTimestamp, where, getDocs, writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Your Firebase Config
@@ -2614,24 +2615,26 @@ AppRegistry.register({
       currentRoom = roomName;
       wrap.querySelector('#active-room-name').textContent = '# ' + roomName;
 
+      // 1. Set filter for 1 hour ago
+      const oneHourAgo = new Date(Date.now() - (10 * 1000));
+
+      // 2. Query only messages newer than 1 hour
       const q = query(
         collection(db, "chats", roomName, "messages"),
-        orderBy("createdAt", "asc"),
-        limit(50)
+        where("createdAt", ">", oneHourAgo),
+        orderBy("createdAt", "asc")
       );
 
-      // Added { includeMetadataChanges: true } so messages show instantly
       unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
         msgContainer.innerHTML = '';
         snapshot.forEach((doc) => {
           const data = doc.data();
           renderMessage(data.user, data.text, data.createdAt);
         });
-        // Auto-scroll to bottom on new messages
         msgContainer.scrollTop = msgContainer.scrollHeight;
       }, (error) => {
+        // If you see an error here, check the F12 Console for an Index Link
         console.error("Firestore Error:", error);
-        Notify.send('Chat Sync Error', 'Could not sync messages.', 'error');
       });
     }
 
@@ -2642,13 +2645,32 @@ AppRegistry.register({
       inputField.value = '';
       
       try {
+        // A. Send the new message
         await addDoc(collection(db, "chats", currentRoom, "messages"), {
           user: OS_META.user,
           text: text,
           createdAt: serverTimestamp()
         });
+
+        // B. The Janitor: Look for messages older than 1 hour to delete
+        const cutoff = new Date(Date.now() - (10 * 1000));
+        const oldQuery = query(
+          collection(db, "chats", currentRoom, "messages"),
+          where("createdAt", "<", cutoff)
+        );
+
+        const oldDocs = await getDocs(oldQuery);
+        if (!oldDocs.empty) {
+          const batch = writeBatch(db);
+          oldDocs.forEach((doc) => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+          console.log("Janitor: Cleaned up " + oldDocs.size + " old messages.");
+        }
       } catch (e) {
-        Notify.send('Chat Error', 'Could not send message.', 'error');
+        console.error("Chat Error:", e);
+        Notify.send('Chat Error', 'Connection failed.', 'error');
       }
     };
 
