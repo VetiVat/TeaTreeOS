@@ -2616,7 +2616,7 @@ AppRegistry.register({
       wrap.querySelector('#active-room-name').textContent = '# ' + roomName;
 
       // 1. Set filter for 1 hour ago
-      const oneHourAgo = new Date(Date.now() - (10 * 1000));
+      const oneHourAgo = new Date(Date.now() - (30 * 60 * 1000));
 
       // 2. Query only messages newer than 1 hour
       const q = query(
@@ -2653,7 +2653,7 @@ AppRegistry.register({
         });
 
         // B. The Janitor: Look for messages older than 1 hour to delete
-        const cutoff = new Date(Date.now() - (10 * 1000));
+        const cutoff = new Date(Date.now() - (30 * 60 * 1000));
         const oldQuery = query(
           collection(db, "chats", currentRoom, "messages"),
           where("createdAt", "<", cutoff)
