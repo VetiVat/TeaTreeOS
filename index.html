@@ -934,6 +934,50 @@ input, textarea { font: inherit; color: inherit; }
   animation: winSpawn 0.2s ease;
 }
 
+/* --- New User Presence Sidebar --- */
+.chat-user-sidebar {
+  width: 140px;
+  background: rgba(0,0,0,0.15);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* Prevents the sidebar from squishing */
+}
+
+.chat-users-lbl {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 12px 12px 6px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 5px;
+}
+
+.chat-users-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-user-item {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 5px var(--green);
+  flex-shrink: 0;
+}
+
 /* ─── CURSORS ─────────────────────────────────────────────── */
 /*
  * All cursor GIFs live at Cursors/<Name>.gif (relative to index.html).
@@ -2555,13 +2599,14 @@ AppRegistry.register({
   }
 });
 
-/* ── CHAT (FIRESTORE POWERED) ─────────────────────────── */
+/* ── CHAT (FIRESTORE POWERED WITH PRESENCE) ─────────────────── */
 AppRegistry.register({
   id: 'chat', name: 'TeaChat', icon: '👥',
   launch() {
     const rooms = ['Global Lounge', 'Development', 'Support', 'Off-Topic'];
     let currentRoom = 'Global Lounge';
-    let unsubscribe = null; // To stop listening when switching rooms or closing
+    let msgUnsubscribe = null;
+    let userUnsubscribe = null;
 
     const wrap = document.createElement('div'); wrap.className = 'chat-body';
     wrap.innerHTML = `
@@ -2582,25 +2627,23 @@ AppRegistry.register({
           </div>
         </div>
       </div>
+      <div class="chat-user-sidebar">
+        <div class="chat-users-lbl">Online</div>
+        <div class="chat-users-list" id="chat-user-list"></div>
+      </div>
     `;
 
     const msgContainer = wrap.querySelector('#chat-msg-container');
+    const userListContainer = wrap.querySelector('#chat-user-list');
     const inputField = wrap.querySelector('#chat-input-field');
     const roomList = wrap.querySelector('.chat-rooms-list');
 
-    // Function to render a single message
-    // 1. Updated to handle the "sending..." state for local messages
     function renderMessage(user, text, timestamp) {
       const msg = document.createElement('div');
       msg.className = 'chat-msg';
-      
-      // If server hasn't confirmed the time yet, use the local clock
-      let timeStr = "";
-      if (timestamp && timestamp.seconds) {
-        timeStr = new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } else {
-        timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " (sending...)";
-      }
+      let timeStr = timestamp?.seconds 
+        ? new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " (sending...)";
       
       msg.innerHTML = `
         <div class="chat-msg-meta">
@@ -2613,77 +2656,73 @@ AppRegistry.register({
       msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
-    // 2. Updated to listen for local metadata changes (real-time fix)
-    function loadRoom(roomName) {
-      if (unsubscribe) unsubscribe(); 
+    async function loadRoom(roomName) {
+      if (msgUnsubscribe) msgUnsubscribe();
+      if (userUnsubscribe) userUnsubscribe();
+      
       msgContainer.innerHTML = '';
       currentRoom = roomName;
       wrap.querySelector('#active-room-name').textContent = '# ' + roomName;
 
-      // 1. Set filter for 1 hour ago
-      const oneHourAgo = new Date(Date.now() - (30 * 60 * 1000));
+      // 1. Join Presence (Register self in this room)
+      const userRef = collection(db, "presence");
+      const qUser = query(userRef, where("username", "==", OS_META.user));
+      const existing = await getDocs(qUser);
+      
+      const batch = writeBatch(db);
+      existing.forEach(d => batch.delete(d.ref));
+      await batch.commit();
 
-      // 2. Query only messages newer than 1 hour
-      const q = query(
+      await addDoc(collection(db, "presence"), {
+        username: OS_META.user,
+        room: roomName,
+        lastActive: serverTimestamp()
+      });
+
+      // 2. Listen for Messages
+      const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
+      const qMsg = query(
         collection(db, "chats", roomName, "messages"),
         where("createdAt", ">", oneHourAgo),
         orderBy("createdAt", "asc")
       );
-
-      unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      msgUnsubscribe = onSnapshot(qMsg, (snapshot) => {
         msgContainer.innerHTML = '';
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          renderMessage(data.user, data.text, data.createdAt);
+        snapshot.forEach(doc => renderMessage(doc.data().user, doc.data().text, doc.data().createdAt));
+      });
+
+      // 3. Listen for Users in this room
+      const qPresence = query(collection(db, "presence"), where("room", "==", roomName));
+      userUnsubscribe = onSnapshot(qPresence, (snapshot) => {
+        userListContainer.innerHTML = '';
+        const activeUsers = new Set();
+        snapshot.forEach(doc => {
+          const u = doc.data().username;
+          if (!activeUsers.has(u)) {
+            activeUsers.add(u);
+            const uEl = document.createElement('div');
+            uEl.className = 'chat-user-item';
+            uEl.innerHTML = `<div class="status-dot"></div><span>${escapeHTML(u)}</span>`;
+            userListContainer.appendChild(uEl);
+          }
         });
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-      }, (error) => {
-        // If you see an error here, check the F12 Console for an Index Link
-        console.error("Firestore Error:", error);
       });
     }
 
-    // Sending Messages to Firestore
     const handleSend = async () => {
       const text = inputField.value.trim();
       if (!text) return;
       inputField.value = '';
-      
-      try {
-        // A. Send the new message
-        await addDoc(collection(db, "chats", currentRoom, "messages"), {
-          user: OS_META.user,
-          text: text,
-          createdAt: serverTimestamp()
-        });
-
-        // B. The Janitor: Look for messages older than 1 hour to delete
-        const cutoff = new Date(Date.now() - (30 * 60 * 1000));
-        const oldQuery = query(
-          collection(db, "chats", currentRoom, "messages"),
-          where("createdAt", "<", cutoff)
-        );
-
-        const oldDocs = await getDocs(oldQuery);
-        if (!oldDocs.empty) {
-          const batch = writeBatch(db);
-          oldDocs.forEach((doc) => {
-            batch.delete(doc.ref);
-          });
-          await batch.commit();
-          console.log("Janitor: Cleaned up " + oldDocs.size + " old messages.");
-        }
-      } catch (e) {
-        console.error("Chat Error:", e);
-        Notify.send('Chat Error', 'Connection failed.', 'error');
-      }
+      await addDoc(collection(db, "chats", currentRoom, "messages"), {
+        user: OS_META.user,
+        text: text,
+        createdAt: serverTimestamp()
+      });
     };
 
-    // UI Listeners
     wrap.querySelector('#chat-send-btn').onclick = handleSend;
     inputField.onkeydown = (e) => { if (e.key === 'Enter') handleSend(); };
 
-    // Build Room Sidebar
     rooms.forEach(r => {
       const item = document.createElement('div');
       item.className = `chat-room-item ${r === currentRoom ? 'active' : ''}`;
@@ -2700,8 +2739,16 @@ AppRegistry.register({
 
     WM.create({
       appId: 'chat', title: 'TeaChat', icon: '👥',
-      width: 600, height: 450, content: wrap,
-      onClose: () => { if (unsubscribe) unsubscribe(); }
+      width: 750, height: 450, content: wrap,
+      onClose: async () => {
+        if (msgUnsubscribe) msgUnsubscribe();
+        if (userUnsubscribe) userUnsubscribe();
+        const q = query(collection(db, "presence"), where("username", "==", OS_META.user));
+        const snap = await getDocs(q);
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
     });
   }
 });
