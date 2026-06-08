@@ -1136,6 +1136,156 @@ body.loading * {
  * .resize-v     { cursor: url('Cursors/VerticalResize.gif'),   ns-resize; }
  * .resize-ne    { cursor: url('Cursors/DiagonalResize2.gif'),  nesw-resize; }
  */
+
+/* ─── AI ASSISTANT SKIN ───────────────────────────────────── */
+.ai-container {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  background: var(--base);
+}
+
+.ai-sidebar {
+  width: 240px;
+  background: rgba(0,0,0,0.25);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.ai-new-chat-btn {
+  margin: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.2s;
+  cursor: url('Cursors/LinkSelect.gif'), pointer; /* Custom OS Cursor */
+}
+.ai-new-chat-btn:hover { background: var(--surface-1); }
+
+.ai-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+}
+
+.ai-history-item {
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: url('Cursors/LinkSelect.gif'), pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.ai-history-item:hover { background: var(--surface-1); color: var(--text); }
+.ai-history-item.active { background: var(--surface-2); color: var(--accent); }
+
+.ai-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, rgba(109,191,103,0.03) 0%, transparent 70%);
+}
+
+.ai-header {
+  padding: 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text-muted);
+}
+
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px 0;
+}
+
+.ai-msg-row {
+  width: 100%;
+  padding: 24px 20px;
+  display: flex;
+  justify-content: center;
+}
+.ai-msg-row.assistant { background: rgba(255,255,255,0.02); }
+
+.ai-msg-content {
+  max-width: 720px;
+  width: 100%;
+  display: flex;
+  gap: 20px;
+}
+
+.ai-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: var(--surface-3);
+}
+.ai-avatar.bot { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(109,191,103,0.2); }
+
+.ai-text {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text);
+  padding-top: 4px;
+}
+
+.ai-input-wrapper {
+  padding: 20px;
+  padding-bottom: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.ai-input-container {
+  max-width: 720px;
+  width: 100%;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.ai-input-field {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: url('Cursors/TextSelect2.gif'), text;
+}
+
+.ai-send-btn {
+  color: var(--accent);
+  opacity: 0.5;
+  font-size: 1.2rem;
+  transition: opacity 0.2s;
+  cursor: url('Cursors/LinkSelect.gif'), pointer;
+}
+.ai-send-btn:hover { opacity: 1; }
+
 </style>
 </head>
 <body>
@@ -3063,7 +3213,6 @@ AppRegistry.register({
 AppRegistry.register({
   id: 'web', name: 'Web', icon: '🌐',
   launch(opts = {}) {
-    // Check if Web is already open
     const existing = WM.getWins().find(w => w.appId === 'web');
     if (existing && opts.url) {
       WM.focus(existing.id);
@@ -3083,7 +3232,7 @@ AppRegistry.register({
       <button class="media-tb-btn">◀</button>
       <button class="media-tb-btn">▶</button>
       <button class="media-tb-btn">↻</button>
-      <div class="web-address-bar">https://teatree.internal/blog</div>
+      <div class="web-address-bar">https://canopy.ai/chat</div>
     `;
     wrap.append(tabBar, nav, viewStack);
 
@@ -3099,7 +3248,7 @@ AppRegistry.register({
       activeTabId = id;
       const tab = tabs.find(t => t.id === id);
       const addr = wrap.querySelector('.web-address-bar');
-      if (tab.type === 'blog') addr.textContent = 'https://teatree.internal/blog';
+      if (tab.type === 'ai') addr.textContent = 'https://canopy.ai/chat';
       else if (tab.type === 'media') addr.textContent = 'https://mediashare.local/view/' + tab.title;
       else addr.textContent = 'https://teatree.search/new-tab';
       renderTabs();
@@ -3108,7 +3257,7 @@ AppRegistry.register({
     function closeTab(id, e) {
       if (e) e.stopPropagation();
       const tab = tabs.find(t => t.id === id);
-      if (tab.type === 'blog') return; // Cannot close the feed
+      if (tab.type === 'ai') return; 
       tabs = tabs.filter(t => t.id !== id);
       if (activeTabId === id) activeTabId = tabs[tabs.length - 1].id;
       renderTabs();
@@ -3122,8 +3271,8 @@ AppRegistry.register({
         const el = document.createElement('div');
         el.className = `web-tab ${activeTabId === t.id ? 'active' : ''}`;
         el.innerHTML = `
-          <span class="web-tab-title">${t.type === 'blog' ? '📔 ' : ''}${escapeHTML(t.title)}</span>
-          ${t.type !== 'blog' ? '<span class="web-tab-close">✕</span>' : ''}
+          <span class="web-tab-title">${t.type === 'ai' ? '🌿 ' : ''}${escapeHTML(t.title)}</span>
+          ${t.type !== 'ai' ? '<span class="web-tab-close">✕</span>' : ''}
         `;
         el.onclick = () => switchTab(t.id);
         const closeBtn = el.querySelector('.web-tab-close');
@@ -3133,16 +3282,8 @@ AppRegistry.register({
         const content = document.createElement('div');
         content.className = `web-content ${activeTabId === t.id ? 'active' : ''}`;
         
-        if (t.type === 'blog') {
-          content.innerHTML = `<div style="padding:40px; max-width:600px; margin:0 auto;">
-            <h1 style="margin-bottom:10px;">The Canopy Feed</h1>
-            <p style="color:var(--text-muted); line-height:1.6;">Welcome to your internal blog. This tab stays open to keep you updated on system changes and community uploads.</p>
-            <hr style="margin:20px 0; opacity:0.1;">
-            <div style="background:var(--surface-1); padding:20px; border-radius:10px; border:1px solid var(--border);">
-              <h3 style="color:var(--accent);">v1.3 Canopy Update</h3>
-              <p style="font-size:0.8rem; margin-top:5px;">Tabbed browsing is now live. Open any media file to see it in action.</p>
-            </div>
-          </div>`;
+        if (t.type === 'ai') {
+          renderAIScreen(content);
         } else if (t.type === 'media') {
           renderMediaTab(content, t);
         } else {
@@ -3158,6 +3299,47 @@ AppRegistry.register({
       tabBar.appendChild(newTabBtn);
     }
 
+    function renderAIScreen(container) {
+      container.innerHTML = `
+        <div class="ai-container">
+          <div class="ai-sidebar">
+            <div class="ai-new-chat-btn"><span>＋</span> New Chat</div>
+            <div class="ai-history-list">
+              <div class="ai-history-item active">Welcome to Canopy AI</div>
+              <div class="ai-history-item">System Resource Help</div>
+              <div class="ai-history-item">VFS Navigation Guide</div>
+              <div class="ai-history-item">How to use Drives</div>
+            </div>
+          </div>
+          <div class="ai-main">
+            <div class="ai-header">Canopy AI 1.5</div>
+            <div class="ai-messages">
+              <div class="ai-msg-row">
+                <div class="ai-msg-content">
+                  <div class="ai-avatar">👤</div>
+                  <div class="ai-text">Hello! Can you help me understand how TeaTreeOS handles host file access?</div>
+                </div>
+              </div>
+              <div class="ai-msg-row assistant">
+                <div class="ai-msg-content">
+                  <div class="ai-avatar bot">🌿</div>
+                  <div class="ai-text">
+                    Of course! TeaTreeOS uses the <strong>Mount Manager</strong>. You can link any folder from your actual computer by using the <strong>Drives</strong> app or the '🔗' icon in the File Manager. Once mounted, your files appear under <code>/media/</code>.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="ai-input-wrapper">
+              <div class="ai-input-container">
+                <input type="text" class="ai-input-field" placeholder="Message Canopy AI...">
+                <div class="ai-send-btn">▲</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function renderMediaTab(container, tab) {
       let skin = 'skin-ig'; 
       if (tab.mediaType === 'video') skin = 'skin-yt';
@@ -3168,7 +3350,6 @@ AppRegistry.register({
       mediaHtml.className = 'web-media-container';
       
       if (tab.mediaType === 'video') {
-        // --- YOUTUBE LAYOUT ---
         mediaHtml.innerHTML = `
           <div style="display:flex; gap:24px;">
             <div style="flex:1;">
@@ -3192,15 +3373,11 @@ AppRegistry.register({
                   <button class="yt-btn">...</button>
                 </div>
               </div>
-              <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-top:12px; font-size:0.85rem;">
-                <strong>156K views · 2 days ago</strong><br>
-                <p style="margin-top:8px;">This media was opened directly from the TeaTreeOS filesystem.</p>
-              </div>
             </div>
             <div class="web-fake-sidebar" style="width:350px;">
               <div style="font-weight:bold; margin-bottom:12px;">Up Next</div>
               ${[1,2,3,4].map(()=>`
-                <div style="display:flex; gap:8px; margin-bottom:12px; cursor:pointer;">
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
                   <div style="width:120px; height:68px; background:#333; border-radius:8px; flex-shrink:0;"></div>
                   <div>
                     <div style="font-size:0.8rem; font-weight:600; line-height:1.2;">Related Video Content...</div>
@@ -3212,7 +3389,6 @@ AppRegistry.register({
           </div>
         `;
       } else if (tab.mediaType === 'audio') {
-        // --- SOUNDCLOUD LAYOUT ---
         mediaHtml.innerHTML = `
           <div class="sc-hero">
             <div class="sc-artwork" style="background-image:url('${tab.mediaUrl}'); background-size:cover;">
@@ -3237,7 +3413,6 @@ AppRegistry.register({
           </div>
         `;
       } else {
-        // --- IMGUR LAYOUT ---
         mediaHtml.innerHTML = `
           <div style="display:flex; gap:20px; align-items:flex-start;">
             <div style="flex:1;" class="ig-container">
@@ -3265,13 +3440,10 @@ AppRegistry.register({
       container.appendChild(mediaHtml);
     }
 
-    // Initial Tab
-    createTab('Blog', 'blog');
+    createTab('Canopy AI', 'ai');
     
-    // If launched with a file
     if (opts.url) createTab(opts.name, 'media', opts.url, opts.mediaType, opts.file);
 
-    // Listener for adding tabs while window is open
     const addTabHandler = (e) => {
       createTab(e.detail.name, 'media', e.detail.url, e.detail.mediaType, e.detail.file);
     };
@@ -3282,7 +3454,6 @@ AppRegistry.register({
       content: wrap,
       onClose: () => {
         window.removeEventListener('web:addtab', addTabHandler);
-        // Revoke blob URLs for all media tabs
         tabs.forEach(t => {
           if (t.mediaUrl.startsWith('blob:')) URL.revokeObjectURL(t.mediaUrl);
         });
