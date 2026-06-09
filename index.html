@@ -1365,7 +1365,8 @@ body.loading * {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, 
-  serverTimestamp, where, getDocs, writeBatch, doc, deleteDoc, updateDoc // Add updateDoc here
+  serverTimestamp, where, getDocs, writeBatch, doc, deleteDoc, 
+  updateDoc, setDoc // <--- Ensure setDoc is here
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Your Firebase Config
@@ -2982,52 +2983,88 @@ AppRegistry.register({
       };
       roomList.appendChild(item);
     });
-// --- START OF AUTO-CLEANUP LOGIC ---
-    const pruneInactiveUsers = async () => {
-      try {
-        const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
-        const q = query(collection(db, "presence"), where("lastActive", "<", thirtySecondsAgo));
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return;
-        const batch = writeBatch(db);
-        snapshot.forEach((snapDoc) => batch.delete(snapDoc.ref));
-        await batch.commit();
-      } catch (err) { console.error("Cleanup error:", err); }
-    };
+// --- WEB WORKER HEARTBEAT (ANTI-THROTTLE) ---
+    
+    // 1. Define the code the worker will run (a simple timer)
+    const workerCode = `
+      let timer = null;
+      self.onmessage = function(e) {
+        if (e.data === 'start') {
+          timer = setInterval(() => { self.postMessage('tick'); }, 20000); // 20s tick
+        } else if (e.data === 'stop') {
+          clearInterval(timer);
+        }
+      };
+    `;
 
+    // 2. Create the worker from a Blob
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const heartbeatWorker = new Worker(URL.createObjectURL(blob));
+
+    // 3. Define the actual heartbeat function
     const sendHeartbeat = async () => {
       try {
-        const q = query(collection(db, "presence"), where("username", "==", OS_META.user));
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        snapshot.forEach((snapDoc) => updateDoc(snapDoc.ref, { lastActive: serverTimestamp() }));
-        await batch.commit();
-      } catch (err) { console.error("Heartbeat error:", err); }
+        // We use setDoc with a predictable ID (username_room)
+        // This ensures even if a prune deletes us, we re-create ourselves instantly
+        const presenceId = `${OS_META.user}_${currentRoom}`.replace(/\s+/g, '_');
+        await setDoc(doc(db, "presence", presenceId), {
+          username: OS_META.user,
+          room: currentRoom,
+          lastActive: serverTimestamp()
+        }, { merge: true });
+      } catch (err) { console.error("Background Heartbeat Error:", err); }
     };
 
-    const cleanupInterval = setInterval(pruneInactiveUsers, 30000);
-    const heartbeatInterval = setInterval(sendHeartbeat, 25000);
+    // 4. Define the cleanup (Janitor) function
+    const pruneInactiveUsers = async () => {
+      try {
+        // We'll be more generous: prune after 90 seconds of total silence
+        const ninetySecondsAgo = new Date(Date.now() - 90 * 1000);
+        const q = query(
+          collection(db, "presence"), 
+          where("lastActive", "<", ninetySecondsAgo),
+          where("room", "==", currentRoom)
+        );
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        snapshot.forEach((snapDoc) => {
+          if (snapDoc.data().username !== OS_META.user) {
+            batch.delete(snapDoc.ref);
+          }
+        });
+        await batch.commit();
+      } catch (err) { console.error("Prune error:", err); }
+    };
+
+    // 5. Start the Worker and the Prune Timer
+    heartbeatWorker.postMessage('start');
+    heartbeatWorker.onmessage = () => sendHeartbeat();
+    
+    // Pruning can stay as a standard interval (it's okay if it slows down slightly)
+    const cleanupInterval = setInterval(pruneInactiveUsers, 60000); 
+
+    // Trigger initial heartbeat immediately
+    sendHeartbeat();
     // --- END OF AUTO-CLEANUP LOGIC ---
+    
     loadRoom(currentRoom);
 
     WM.create({
       appId: 'chat', title: 'TeaChat', icon: '👥',
       width: 750, height: 450, content: wrap,
       onClose: async () => {
-    // Clear the new intervals
-    clearInterval(cleanupInterval);
-    clearInterval(heartbeatInterval);
+        // --- CLEANUP ---
+        heartbeatWorker.postMessage('stop');
+        heartbeatWorker.terminate(); 
+        clearInterval(cleanupInterval);
 
-    if (msgUnsubscribe) msgUnsubscribe();
-    if (userUnsubscribe) userUnsubscribe();
-    if (pingUnsubscribe) pingUnsubscribe();
-    
-    // Remove self from presence immediately on close
-    const q = query(collection(db, "presence"), where("username", "==", OS_META.user));
-    const snap = await getDocs(q);
-    const batch = writeBatch(db);
-    snap.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+        if (msgUnsubscribe) msgUnsubscribe();
+        if (userUnsubscribe) userUnsubscribe();
+        if (pingUnsubscribe) pingUnsubscribe();
+        
+        // Remove self
+        const presenceId = `${OS_META.user}_${currentRoom}`.replace(/\s+/g, '_');
+        await deleteDoc(doc(db, "presence", presenceId));
       }
     });
   }
