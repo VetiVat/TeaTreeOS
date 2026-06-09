@@ -1365,7 +1365,7 @@ body.loading * {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, 
-  serverTimestamp, where, getDocs, writeBatch 
+  serverTimestamp, where, getDocs, writeBatch, doc, deleteDoc // Added doc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Your Firebase Config
@@ -2780,7 +2780,7 @@ AppRegistry.register({
   }
 });
 
-/* ── CHAT (FIRESTORE POWERED WITH PRESENCE) ─────────────────── */
+/* ── CHAT (FIRESTORE POWERED WITH PRESENCE & PINGS) ─────────── */
 AppRegistry.register({
   id: 'chat', name: 'TeaChat', icon: '👥',
   launch() {
@@ -2788,6 +2788,10 @@ AppRegistry.register({
     let currentRoom = 'Global Lounge';
     let msgUnsubscribe = null;
     let userUnsubscribe = null;
+    let pingUnsubscribe = null; // New listener for pings
+
+    // Audio setup
+    const pingAudio = new Audio('assets/loon.mp3');
 
     const wrap = document.createElement('div'); wrap.className = 'chat-body';
     wrap.innerHTML = `
@@ -2819,37 +2823,53 @@ AppRegistry.register({
     const inputField = wrap.querySelector('#chat-input-field');
     const roomList = wrap.querySelector('.chat-rooms-list');
 
-    function renderMessage(user, text, timestamp) {
+    function renderMessage(user, text, timestamp, isSystem = false) {
       const msg = document.createElement('div');
-      msg.className = 'chat-msg';
-      let timeStr = timestamp?.seconds 
-        ? new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " (sending...)";
+      msg.className = isSystem ? 'nudge-text' : 'chat-msg';
       
-      msg.innerHTML = `
-        <div class="chat-msg-meta">
-          <span class="chat-msg-user">${escapeHTML(user)}</span>
-          <span class="chat-msg-time">${timeStr}</span>
-        </div>
-        <div class="chat-msg-text">${escapeHTML(text)}</div>
-      `;
+      if (isSystem) {
+        msg.textContent = text;
+      } else {
+        let timeStr = timestamp?.seconds 
+          ? new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " (sending...)";
+        
+        msg.innerHTML = `
+          <div class="chat-msg-meta">
+            <span class="chat-msg-user">${escapeHTML(user)}</span>
+            <span class="chat-msg-time">${timeStr}</span>
+          </div>
+          <div class="chat-msg-text">${escapeHTML(text)}</div>
+        `;
+      }
       msgContainer.appendChild(msg);
       msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    // Function to send a ping
+    async function sendPing(targetUser) {
+      await addDoc(collection(db, "pings"), {
+        from: OS_META.user,
+        to: targetUser,
+        room: currentRoom,
+        timestamp: serverTimestamp()
+      });
+      Notify.send('Ping Sent', `You nudged ${targetUser}`, 'info');
     }
 
     async function loadRoom(roomName) {
       if (msgUnsubscribe) msgUnsubscribe();
       if (userUnsubscribe) userUnsubscribe();
+      if (pingUnsubscribe) pingUnsubscribe(); // Reset ping listener on room change
       
       msgContainer.innerHTML = '';
       currentRoom = roomName;
       wrap.querySelector('#active-room-name').textContent = '# ' + roomName;
 
-      // 1. Join Presence (Register self in this room)
+      // 1. Join Presence
       const userRef = collection(db, "presence");
       const qUser = query(userRef, where("username", "==", OS_META.user));
       const existing = await getDocs(qUser);
-      
       const batch = writeBatch(db);
       existing.forEach(d => batch.delete(d.ref));
       await batch.commit();
@@ -2872,19 +2892,59 @@ AppRegistry.register({
         snapshot.forEach(doc => renderMessage(doc.data().user, doc.data().text, doc.data().createdAt));
       });
 
-      // 3. Listen for Users in this room
+      // 3. Listen for Users (with Ping Button)
       const qPresence = query(collection(db, "presence"), where("room", "==", roomName));
       userUnsubscribe = onSnapshot(qPresence, (snapshot) => {
         userListContainer.innerHTML = '';
         const activeUsers = new Set();
-        snapshot.forEach(doc => {
-          const u = doc.data().username;
+        snapshot.forEach(snapDoc => {
+          const u = snapDoc.data().username;
           if (!activeUsers.has(u)) {
             activeUsers.add(u);
             const uEl = document.createElement('div');
             uEl.className = 'chat-user-item';
-            uEl.innerHTML = `<div class="status-dot"></div><span>${escapeHTML(u)}</span>`;
+            uEl.style.justifyContent = 'space-between';
+            
+            let pingBtnHtml = '';
+            if (u !== OS_META.user) {
+              pingBtnHtml = `<button class="fm-btn-sm ping-action-btn" title="Ping ${u}" style="font-size:10px; width:20px; height:20px;">🔔</button>`;
+            }
+
+            uEl.innerHTML = `
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="status-dot"></div>
+                <span>${escapeHTML(u)}</span>
+              </div>
+              ${pingBtnHtml}
+            `;
+
+            const btn = uEl.querySelector('.ping-action-btn');
+            if (btn) btn.onclick = () => sendPing(u);
+
             userListContainer.appendChild(uEl);
+          }
+        });
+      });
+
+      // 4. Listen for Incoming Pings
+      const qPings = query(
+        collection(db, "pings"), 
+        where("to", "==", OS_META.user),
+        where("room", "==", roomName)
+      );
+      
+      pingUnsubscribe = onSnapshot(qPings, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === "added") {
+            const data = change.data();
+            // Play Audio
+            pingAudio.play().catch(e => console.log("Audio play blocked", e));
+            // Show System Message
+            renderMessage(null, `--- ${data.from} just nudged you! ---`, null, true);
+            // OS Notification
+            Notify.send('Ping Received!', `${data.from} nudged you in ${roomName}`, 'warn');
+            // Cleanup: Delete the ping document so it doesn't trigger again
+            await deleteDoc(doc(db, "pings", change.doc.id));
           }
         });
       });
@@ -2924,6 +2984,7 @@ AppRegistry.register({
       onClose: async () => {
         if (msgUnsubscribe) msgUnsubscribe();
         if (userUnsubscribe) userUnsubscribe();
+        if (pingUnsubscribe) pingUnsubscribe();
         const q = query(collection(db, "presence"), where("username", "==", OS_META.user));
         const snap = await getDocs(q);
         const batch = writeBatch(db);
