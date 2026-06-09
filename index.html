@@ -3015,38 +3015,48 @@ AppRegistry.register({
       } catch (err) { console.error("Background Heartbeat Error:", err); }
     };
 
-    // 4. Define the cleanup (Janitor) function
     const pruneInactiveUsers = async () => {
       try {
-        // We'll be more generous: prune after 90 seconds of total silence
+        // 1. Identify users who haven't checked in for 90 seconds
         const ninetySecondsAgo = new Date(Date.now() - 90 * 1000);
+        
+        // 2. Simplified query: check ALL rooms at once. 
+        // This avoids the "Missing Index" error.
         const q = query(
           collection(db, "presence"), 
-          where("lastActive", "<", ninetySecondsAgo),
-          where("room", "==", currentRoom)
+          where("lastActive", "<", ninetySecondsAgo)
         );
+
         const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) return;
+
         const batch = writeBatch(db);
         snapshot.forEach((snapDoc) => {
+          // 3. Safety: Never delete yourself
           if (snapDoc.data().username !== OS_META.user) {
             batch.delete(snapDoc.ref);
           }
         });
+        
         await batch.commit();
-      } catch (err) { console.error("Prune error:", err); }
+        console.log(`[Janitor] Purged ${snapshot.size} ghost sessions.`);
+      } catch (err) { 
+        // If you see an "Index" error here in F12, click the link Firebase provides!
+        console.error("Prune error:", err); 
+      }
     };
 
-    // 5. Start the Worker and the Prune Timer
-    heartbeatWorker.postMessage('start');
-    heartbeatWorker.onmessage = () => sendHeartbeat();
-    
-    // Pruning can stay as a standard interval (it's okay if it slows down slightly)
-    const cleanupInterval = setInterval(pruneInactiveUsers, 60000); 
+    // 4. RUN IMMEDIATELY on launch to clean up ghosts from previous sessions
+    pruneInactiveUsers();
+
+    // 5. Run every 60 seconds thereafter
+    const cleanupInterval = setInterval(pruneInactiveUsers, 60000);
 
     // Trigger initial heartbeat immediately
     sendHeartbeat();
     // --- END OF AUTO-CLEANUP LOGIC ---
-    
+
     loadRoom(currentRoom);
 
     WM.create({
