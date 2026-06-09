@@ -2983,6 +2983,7 @@ AppRegistry.register({
       };
       roomList.appendChild(item);
     });
+
 // --- WEB WORKER HEARTBEAT (ANTI-THROTTLE) ---
     
     // 1. Define the code the worker will run (a simple timer)
@@ -2990,7 +2991,9 @@ AppRegistry.register({
       let timer = null;
       self.onmessage = function(e) {
         if (e.data === 'start') {
-          timer = setInterval(() => { self.postMessage('tick'); }, 20000); // 20s tick
+          // Immediately send a tick, then repeat every 20s
+          self.postMessage('tick');
+          timer = setInterval(() => { self.postMessage('tick'); }, 20000); 
         } else if (e.data === 'stop') {
           clearInterval(timer);
         }
@@ -3000,6 +3003,13 @@ AppRegistry.register({
     // 2. Create the worker from a Blob
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const heartbeatWorker = new Worker(URL.createObjectURL(blob));
+
+    // --- NEW: LISTEN FOR WORKER TICKS ---
+    heartbeatWorker.onmessage = (e) => {
+      if (e.data === 'tick') {
+        sendHeartbeat();
+      }
+    };
 
     // 3. Define the actual heartbeat function
     const sendHeartbeat = async () => {
@@ -3012,6 +3022,7 @@ AppRegistry.register({
           room: currentRoom,
           lastActive: serverTimestamp()
         }, { merge: true });
+        console.log(`[Heartbeat] Updated presence for ${OS_META.user}`);
       } catch (err) { console.error("Background Heartbeat Error:", err); }
     };
 
@@ -3053,8 +3064,9 @@ AppRegistry.register({
     // 5. Run every 60 seconds thereafter
     const cleanupInterval = setInterval(pruneInactiveUsers, 60000);
 
-    // Trigger initial heartbeat immediately
-    sendHeartbeat();
+    // --- NEW: START THE WORKER LOOP ---
+    heartbeatWorker.postMessage('start');
+    
     // --- END OF AUTO-CLEANUP LOGIC ---
 
     loadRoom(currentRoom);
