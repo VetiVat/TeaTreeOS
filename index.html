@@ -2934,20 +2934,27 @@ AppRegistry.register({
       );
       
       pingUnsubscribe = onSnapshot(qPings, (snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-          if (change.type === "added") {
-            const data = change.data();
-            // Play Audio
-            pingAudio.play().catch(e => console.log("Audio play blocked", e));
-            // Show System Message
-            renderMessage(null, `--- ${data.from} just nudged you! ---`, null, true);
-            // OS Notification
-            Notify.send('Ping Received!', `${data.from} nudged you in ${roomName}`, 'warn');
-            // Cleanup: Delete the ping document so it doesn't trigger again
-            await deleteDoc(doc(db, "pings", change.doc.id));
-          }
-        });
-      });
+  snapshot.docChanges().forEach(async (change) => {
+    // change is a DocumentChange object
+    // to get the data, we must look at change.doc
+    if (change.type === "added") {
+      const data = change.doc.data(); // <--- FIXED THIS LINE
+      
+      // Play Audio
+      pingAudio.currentTime = 0;
+      pingAudio.play().catch(e => console.log("Audio play blocked", e));
+      
+      // Show System Message
+      renderMessage(null, `--- ${data.from} just nudged you! ---`, null, true);
+      
+      // OS Notification
+      Notify.send('Ping Received!', `${data.from} nudged you in ${roomName}`, 'warn');
+      
+      // Cleanup: Delete using change.doc.id
+      await deleteDoc(doc(db, "pings", change.doc.id));
+    }
+  });
+});
     }
 
     const handleSend = async () => {
